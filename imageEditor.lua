@@ -79,6 +79,8 @@ function imageEditor.new(windowWidth, windowHeight, imageWidth, imageHeight)
       name = "Fill",
       icon = images["tools/fill.png"],
       onClick = function(tool, x, y)
+        if not self:inRange(x, y) then return end
+
         if self.clean then
           self.imageData:mapPixel(function() return unpack(self.paletteColors[self.selectedColor]) end)
           return
@@ -135,7 +137,7 @@ function imageEditor:updateImage()
 end
 
 function imageEditor:screenToImage(x, y)
-  return (x - self.transX) / self.zoom, (y - self.transY) / self.zoom
+  return math.floor((x - self.transX) / self.zoom), math.floor((y - self.transY) / self.zoom)
 end
 
 function imageEditor:paintCircle(x, y, color)
