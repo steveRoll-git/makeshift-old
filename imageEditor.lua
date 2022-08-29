@@ -83,13 +83,17 @@ function imageEditor.new(windowWidth, windowHeight, imageWidth, imageHeight)
       onClick = function(tool, x, y)
         if not self:inRange(x, y) then return end
 
+        local ir, ig, ib, ia = self.imageData:getPixel(x, y)
+        if compareColors(ir, ig, ib, ia, unpack(self.paletteColors[self.selectedColor])) then
+          return
+        end
+
         if self.clean then
           self.imageData:mapPixel(function() return unpack(self.paletteColors[self.selectedColor]) end)
           return
         end
 
         self.clean = false
-        local ir, ig, ib, ia = self.imageData:getPixel(x, y)
         local queue = {[posHash(x, y)] = true}
         while next(queue) do
           local pos = next(queue)
