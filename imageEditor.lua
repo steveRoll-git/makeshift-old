@@ -166,7 +166,9 @@ end
 function imageEditor:mousemoved(x, y, dx, dy)
   if self.panning then
     self.transX = self.transX + dx
+    self.transX = clamp(self.transX, -self.imageData:getWidth() * self.zoom, self.windowWidth)
     self.transY = self.transY + dy
+    self.transY = clamp(self.transY, -self.imageData:getHeight() * self.zoom, self.windowHeight)
   elseif self.painting and self.currentTool.onDrag then
     local ix, iy = self:screenToImage(x, y)
     local pix, piy = self:screenToImage(self.mouseX, self.mouseY)
