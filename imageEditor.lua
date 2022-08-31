@@ -6,6 +6,8 @@ local dist = require "util.dist"
 local clamp = require "util.clamp"
 local compareColors = require "util.compareColors"
 local posHash = require "util.posHash"
+local sign = require "util.sign"
+local normalize = require "util.normalize"
 
 local defaultPalette = {
   {1,1,1,1},
@@ -74,7 +76,7 @@ function imageEditor.new(windowWidth, windowHeight, imageWidth, imageHeight)
       name = "Pencil",
       icon = images["tools/pencil.png"],
       onDrag = function(tool, x, y, prevX, prevY)
-        self:paintCircle(x, y, self.paletteColors[self.selectedColor])
+        self:paintCircle(x, y, prevX, prevY, self.paletteColors[self.selectedColor])
       end
     },
     {
@@ -117,7 +119,7 @@ function imageEditor.new(windowWidth, windowHeight, imageWidth, imageHeight)
       name = "Erase",
       icon = images["tools/erase.png"],
       onDrag = function(tool, x, y, prevX, prevY)
-        self:paintCircle(x, y, transparentColor)
+        self:paintCircle(x, y, prevX, prevY, transparentColor)
       end
     }
   }
@@ -146,19 +148,34 @@ function imageEditor:screenToImage(x, y)
   return math.floor((x - self.transX) / self.zoom), math.floor((y - self.transY) / self.zoom)
 end
 
-function imageEditor:paintCircle(x, y, color)
+function imageEditor:paintCircle(toX, toY, fromX, fromY, color)
   local size = self.toolSize
-  x = x + 0.5
-  y = y + 0.5
-  local x1, y1 = x - size / 2, y - size / 2
-  local x2, y2 = x + size / 2 - 1, y + size / 2 - 1
-  for ix = x1, x2 do
-    for iy = y1, y2 do
-      if dist(ix, iy, x, y) <= math.ceil(size / 2 + (size < 4 and 1 or 0)) and self:inRange(ix, iy) then
-        self.imageData:setPixel(ix, iy, color)
+  
+  local currentX, currentY = fromX, fromY
+  
+  local dirX, dirY = toX - fromX, toY - fromY
+  local step = math.abs(dirX) > math.abs(dirY) and math.abs(dirX) or math.abs(dirY)
+  local nextX, nextY = currentX, currentY
+
+  local count = 0
+  
+  repeat
+    currentX = nextX
+    currentY = nextY
+    local x = currentX + 0.5
+    local y = currentY + 0.5
+    local x1, y1 = x - size / 2, y - size / 2
+    local x2, y2 = x + size / 2 - 1, y + size / 2 - 1
+    for ix = x1, x2 do
+      for iy = y1, y2 do
+        if dist(ix, iy, x, y) <= math.ceil(size / 2 + (size < 4 and 1 or 0)) and self:inRange(ix, iy) then
+          self.imageData:setPixel(ix, iy, color)
+        end
       end
     end
-  end
+    nextX, nextY = currentX + dirX / step, currentY + dirY / step
+    count = count + 1
+  until dist(currentX, currentY, toX, toY) <= 0.5
 
   self.clean = false
 end
