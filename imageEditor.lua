@@ -180,6 +180,10 @@ function imageEditor:paintCircle(toX, toY, fromX, fromY, color)
   self.clean = false
 end
 
+function imageEditor:mouseOnPaletteResize(x)
+  return x >= self.palettePanelWidth and x <= self.palettePanelWidth + 5
+end
+
 function imageEditor:mousemoved(x, y, dx, dy)
   if self.panning then
     self.transX = self.transX + dx
@@ -191,24 +195,35 @@ function imageEditor:mousemoved(x, y, dx, dy)
     local pix, piy = self:screenToImage(self.mouseX, self.mouseY)
     self.currentTool:onDrag(ix, iy, pix, piy)
     self:updateImage()
+  elseif self.resizingPalette then
+    self.palettePanelWidth = clamp(x, self.paletteSquareSize, self.windowWidth / 2)
+    self.paletteColumns = math.floor(self.palettePanelWidth / self.paletteSquareSize)
+  else
+    if self:mouseOnPaletteResize(x) then
+      love.mouse.setCursor(love.mouse.getSystemCursor("sizewe"))
+    else
+      love.mouse.setCursor()
+    end
   end
 
   self.mouseX, self.mouseY = x, y
 end
 
 function imageEditor:mousepressed(x, y, b)
-  if x <= self.palettePanelWidth then
+  if b == 1 and x < self.palettePanelWidth then
     local index = math.floor(y / self.paletteSquareSize) * self.paletteColumns + math.floor(x / self.paletteSquareSize) + 1
     if index == #self.paletteColors + 1 then
-      --TODO add color dialog
+      TODO("add color dialog")
     elseif index >= 1 and index <= #self.paletteColors then
       self.selectedColor = index
     end
-  elseif x >= self.windowWidth - self.toolbarWidth then
+  elseif b == 1 and x >= self.windowWidth - self.toolbarWidth then
     local index = math.floor(y / self.toolbarWidth) + 1
     if index >= 1 and index <= #self.tools then
       self.currentTool = self.tools[index]
     end
+  elseif b == 1 and self:mouseOnPaletteResize(x) then
+    self.resizingPalette = true
   elseif b == 1 then
     self.painting = true
     self.undoData:paste(self.imageData, 0, 0, 0, 0, self.imageData:getDimensions())
@@ -231,6 +246,7 @@ function imageEditor:mousereleased(x, y, b)
   end
   if b == 1 then
     self.painting = false
+    self.resizingPalette = false
   end
 end
 

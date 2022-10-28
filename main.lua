@@ -1,3 +1,7 @@
+function TODO(msg)
+  error("todo: " .. msg, 1)
+end
+
 local imageEditor = require "imageEditor"
 local images = require "images"
 
