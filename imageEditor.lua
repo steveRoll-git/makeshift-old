@@ -34,6 +34,8 @@ local fillOffsets = {
   {0, -1},
 }
 
+local sideFont = lg.newFont(FontName, 12)
+
 local imageEditor = {}
 imageEditor.__index = imageEditor
 
@@ -251,7 +253,7 @@ function imageEditor:mousereleased(x, y, b)
 end
 
 function imageEditor:wheelmoved(x, y)
-  if love.mouse.getX() >= self.windowWidth - self.toolbarWidth and love.mouse.getY() >= self.toolbarWidth * #self.tools then
+  if self.mouseX >= self.windowWidth - self.toolbarWidth and self.mouseY >= self.toolbarWidth * #self.tools then
     self.toolSize = self.toolSize + y
     self.toolSize = clamp(self.toolSize, 1, 100)
   else
@@ -277,6 +279,11 @@ function imageEditor:keypressed(k)
     self.undoData, self.imageData = self.imageData, self.undoData
     self:updateImage()
   end
+end
+
+function imageEditor:resize(w, h, prevW, prevH)
+  self.transX = self.transX - (prevW - w) / 2
+  self.transY = self.transY - (prevH - h) / 2
 end
 
 function imageEditor:draw()
@@ -322,6 +329,7 @@ function imageEditor:draw()
     lg.draw(tool.icon, x, y)
   end
   lg.setColor(1,1,1)
+  lg.setFont(sideFont)
   lg.printf(("Size:\n%d"):format(self.toolSize), self.windowWidth - self.toolbarWidth, self.toolbarWidth * #self.tools, self.toolbarWidth, "center")
 
   do
