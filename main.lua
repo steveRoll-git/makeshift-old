@@ -1,11 +1,12 @@
 FontName = "fonts/PT Root UI_Regular.ttf"
 
-local window = require "ui.window"
 function TODO(msg)
   error("todo: " .. msg, 1)
 end
 
+local flux = require "lib.flux"
 local imageEditor = require "imageEditor"
+local window = require "ui.window"
 
 local resizeMargin = 12
 
@@ -29,6 +30,8 @@ local resizeX, resizeY
 local windowContentDown
 local windowControlButtonDown
 
+local tweens = flux.group()
+
 local function bringToTop(i)
   table.insert(windows, table.remove(windows, i))
 end
@@ -37,10 +40,16 @@ love.graphics.setBackgroundColor(0.5, 0.5, 0.5)
 
 function love.mousemoved(x, y, dx, dy)
   if draggingWindow then
+    if draggingWindow.maximized then
+      draggingWindow:resize(draggingWindow.originalWidth, draggingWindow.originalHeight)
+      draggingWindow.maximized = false
+      dragX = math.min(dragX, draggingWindow.width - window.titleBarHeight * #window.buttons)
+    end
     draggingWindow.x = x - dragX
     draggingWindow.y = y - dragY
   elseif resizingWindow then
     resizingWindow:resize(math.max(x - resizeX, 100), math.max(y - resizeY, window.titleBarHeight + 50))
+    resizingWindow.maximized = false
   elseif windowContentDown then
     windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
   else
@@ -48,7 +57,7 @@ function love.mousemoved(x, y, dx, dy)
       local w = windows[i]
       w.buttonOver = nil
       if w:inside(x, y) then
-        if x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
+        if not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
           love.mouse.setCursor(love.mouse.getSystemCursor("sizenwse"))
         elseif y > w.y + window.titleBarHeight then
           w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
@@ -84,7 +93,7 @@ function love.mousepressed(x, y, b)
       else
         local right = w.x + w.width
         local bottom = w.y + w.height
-        if x >= right - resizeMargin and x <= right and y >= bottom - resizeMargin and y <= bottom then
+        if not w.maximized and x >= right - resizeMargin and x <= right and y >= bottom - resizeMargin and y <= bottom then
           resizingWindow = w
           resizeX = x - w.width
           resizeY = y - w.height
@@ -103,7 +112,49 @@ function love.mousereleased(x, y, b)
   if windowControlButtonDown then
     if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
       local action = window.buttons[windowControlButtonDown.buttonDown].action
-      TODO(action)
+      if action == "maximize" then
+        local theWindow = windowControlButtonDown
+        theWindow.buttonOver = nil
+        if not theWindow.maximized then
+          theWindow.originalX = theWindow.x
+          theWindow.originalY = theWindow.y
+          theWindow.originalWidth = theWindow.width
+          theWindow.originalHeight = theWindow.height
+          theWindow.maximizeAnim = 0
+          tweens:to(theWindow, 0.3,
+            {
+              width = love.graphics.getWidth(),
+              height = love.graphics.getHeight(),
+              x = 0, y = 0,
+              maximizeAnim = 1
+            })
+              :onupdate(function()
+                theWindow:resize(theWindow.width, theWindow.height)
+              end)
+              :oncomplete(function()
+                theWindow.maximized = true
+                theWindow.maximizeAnim = nil
+              end)
+              :ease("quintout")
+        else
+          theWindow.maximized = false
+          theWindow.maximizeAnim = 1
+          tweens:to(theWindow, 0.3,
+            {
+              width = theWindow.originalWidth,
+              height = theWindow.originalHeight,
+              x = theWindow.originalX, y = theWindow.originalY,
+              maximizeAnim = 0,
+            })
+              :onupdate(function()
+                theWindow:resize(theWindow.width, theWindow.height)
+              end)
+              :oncomplete(function()
+                theWindow.maximizeAnim = nil
+              end)
+              :ease("quintout")
+        end
+      end
     end
     windowControlButtonDown.buttonDown = nil
     windowControlButtonDown = nil
@@ -131,6 +182,10 @@ end
 
 function love.keypressed(k)
   windows[#windows]:keypressed(k)
+end
+
+function love.update(dt)
+  tweens:update(dt)
 end
 
 function love.draw()

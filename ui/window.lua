@@ -1,6 +1,8 @@
 local love = love
 local lg = love.graphics
 
+local lerp = require "util.lerp"
+
 local titleBarHeight = 24
 local titleFont = lg.newFont(FontName, titleBarHeight - 6)
 local cornerSize = 7
@@ -26,15 +28,6 @@ local buttons = {
       lg.rectangle("line", q, titleBarHeight / 2 - h / 2, q * 2, h)
     end
   },
-  {
-    action = "minimize",
-    draw = function()
-      lg.setColor(1, 1, 1)
-      lg.setLineWidth(1)
-      local q = titleBarHeight / 4
-      lg.line(q, titleBarHeight / 2, titleBarHeight - q, titleBarHeight / 2)
-    end
-  },
 }
 
 local window = {}
@@ -52,14 +45,17 @@ end
 function window:init(content, title, width, height)
   self.content = content
   self.title = title
-  self.buttonOver = nil
   self:resize(width, height)
   self.stencilWhole = function()
-    lg.rectangle("fill", 0, 0, self.width, self.height, cornerSize)
+    lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
   end
   self.stencilTitle = function()
     lg.rectangle("fill", 0, 0, self.width, titleBarHeight)
   end
+end
+
+function window:cornerSize()
+  return self.maximizeAnim and lerp(cornerSize, 0, self.maximizeAnim) or (self.maximized and 0 or cornerSize)
 end
 
 function window:inside(x, y)
@@ -87,15 +83,18 @@ function window:resize(w, h)
 end
 
 function window:draw()
+  local outlineColor = self.maximizeAnim and (1 - self.maximizeAnim) or (self.maximized and 0 or 1)
+
   lg.push()
   lg.translate(self.x, self.y)
 
   lg.setColor(0.2, 0.2, 0.2, 0.98)
-  lg.rectangle("fill", 0, 0, self.width, self.height, cornerSize)
+  lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
   lg.setColor(1, 1, 1)
   lg.setLineWidth(1)
-  lg.rectangle("line", 0, 0, self.width, self.height, cornerSize)
   lg.line(0, titleBarHeight, self.width, titleBarHeight)
+  lg.setColor(1, 1, 1, outlineColor)
+  lg.rectangle("line", 0, 0, self.width, self.height, self:cornerSize())
 
   lg.stencil(self.stencilWhole, "replace", 1)
   lg.setStencilTest("greater", 0)
@@ -129,10 +128,12 @@ function window:draw()
   self.content:draw()
   lg.pop()
 
-  lg.setColor(1, 1, 1)
-  lg.setLineWidth(1)
-  lg.line(self.width - cornerSize - 1, self.height, self.width, self.height - cornerSize - 1)
-  lg.line(self.width - cornerSize - 6, self.height, self.width, self.height - cornerSize - 6)
+  if not self.maximized then
+    lg.setColor(1, 1, 1, outlineColor)
+    lg.setLineWidth(1)
+    lg.line(self.width - cornerSize - 1, self.height, self.width, self.height - cornerSize - 1)
+    lg.line(self.width - cornerSize - 6, self.height, self.width, self.height - cornerSize - 6)
+  end
 
   lg.setStencilTest()
   lg.pop()
