@@ -26,7 +26,8 @@ local dragX, dragY
 local resizingWindow
 local resizeX, resizeY
 
-local windowDown
+local windowContentDown
+local windowControlButtonDown
 
 local function bringToTop(i)
   table.insert(windows, table.remove(windows, i))
@@ -40,16 +41,23 @@ function love.mousemoved(x, y, dx, dy)
     draggingWindow.y = y - dragY
   elseif resizingWindow then
     resizingWindow:resize(math.max(x - resizeX, 100), math.max(y - resizeY, window.titleBarHeight + 50))
-  elseif windowDown then
-    windowDown.content:mousemoved(x - windowDown.x, y - windowDown.y - window.titleBarHeight, dx, dy)
+  elseif windowContentDown then
+    windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
   else
     for i = #windows, 1, -1 do
       local w = windows[i]
+      w.buttonOver = nil
       if w:inside(x, y) then
         if x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
           love.mouse.setCursor(love.mouse.getSystemCursor("sizenwse"))
         elseif y > w.y + window.titleBarHeight then
           w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
+        else
+          w.buttonOver = w:getTitleButtonOver(x, y)
+          love.mouse.setCursor()
+        end
+        for j = i - 1, 1, -1 do
+          windows[j].buttonOver = nil
         end
         goto anyOver
       end
@@ -64,9 +72,15 @@ function love.mousepressed(x, y, b)
     local w = windows[i]
     if w:inside(x, y) then
       if y < w.y + window.titleBarHeight then
-        draggingWindow = w
-        dragX = x - w.x
-        dragY = y - w.y
+        local button = w:getTitleButtonOver(x, y)
+        if button then
+          w.buttonDown = button
+          windowControlButtonDown = w
+        else
+          draggingWindow = w
+          dragX = x - w.x
+          dragY = y - w.y
+        end
       else
         local right = w.x + w.width
         local bottom = w.y + w.height
@@ -76,7 +90,7 @@ function love.mousepressed(x, y, b)
           resizeY = y - w.height
         else
           w.content:mousepressed(x - w.x, y - w.y - window.titleBarHeight, b)
-          windowDown = w
+          windowContentDown = w
         end
       end
       bringToTop(i)
@@ -86,13 +100,22 @@ function love.mousepressed(x, y, b)
 end
 
 function love.mousereleased(x, y, b)
+  if windowControlButtonDown then
+    if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
+      local action = window.buttons[windowControlButtonDown.buttonDown].action
+      TODO(action)
+    end
+    windowControlButtonDown.buttonDown = nil
+    windowControlButtonDown = nil
+    return
+  end
   if draggingWindow then
     draggingWindow = nil
   elseif resizingWindow then
     resizingWindow = nil
-  elseif windowDown then
-    windowDown.content:mousereleased(x - windowDown.x, y - windowDown.y - window.titleBarHeight, b)
-    windowDown = nil
+  elseif windowContentDown then
+    windowContentDown.content:mousereleased(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, b)
+    windowContentDown = nil
   end
 end
 
