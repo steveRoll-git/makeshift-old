@@ -331,6 +331,7 @@ function imageEditor:draw()
   lg.setColor(1,1,1)
   lg.setFont(sideFont)
   lg.printf(("Size:\n%d"):format(self.toolSize), self.windowWidth - self.toolbarWidth, self.toolbarWidth * #self.tools, self.toolbarWidth, "center")
+  lg.printf(("Zoom:\n%d%%"):format(math.floor(self.zoom * 100)), self.windowWidth - self.toolbarWidth, self.windowHeight - sideFont:getHeight() * 2, self.toolbarWidth, "center")
 
   do
     -- selected color crosshair
