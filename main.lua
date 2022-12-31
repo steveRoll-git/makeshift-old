@@ -91,7 +91,7 @@ end
 function love.mousepressed(x, y, b)
   for i = #windows, 1, -1 do
     local w = windows[i]
-    if w:inside(x, y) then
+    if not w.closeAnim and w:inside(x, y) then
       if y < w.y + window.titleBarHeight then
         local button = w:getTitleButtonOver(x, y)
         if button then
