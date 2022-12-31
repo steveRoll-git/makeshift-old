@@ -8,7 +8,7 @@ function TODO(msg)
 end
 
 local flux = require "lib.flux"
-local imageEditor = require "imageEditor"
+local imageEditor = require "windows.imageEditor"
 local window = require "ui.window"
 
 local resizeMargin = 12
