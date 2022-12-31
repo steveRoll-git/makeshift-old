@@ -85,8 +85,14 @@ end
 function window:draw()
   local outlineColor = self.maximizeAnim and (1 - self.maximizeAnim) or (self.maximized and 0 or 1)
 
-  lg.push()
-  lg.translate(self.x, self.y)
+  if self.closeAnim then
+    local amount = self.closeAnim / 8
+    lg.translate(self.width / 2 * amount, self.height / 2 * amount)
+    lg.scale(1 - amount)
+    lg.setColor(1, 1, 1, 1 - self.closeAnim)
+    lg.draw(self.canvas)
+    return
+  end
 
   lg.setColor(0.2, 0.2, 0.2, 0.98)
   lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
@@ -136,7 +142,6 @@ function window:draw()
   end
 
   lg.setStencilTest()
-  lg.pop()
 end
 
 return window

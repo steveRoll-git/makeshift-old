@@ -1,3 +1,6 @@
+local love = love
+local lg = love.graphics
+
 FontName = "fonts/PT Root UI_Regular.ttf"
 
 function TODO(msg)
@@ -34,6 +37,15 @@ local tweens = flux.group()
 
 local function bringToTop(i)
   table.insert(windows, table.remove(windows, i))
+end
+
+local function closeWindow(which)
+  for i, w in ipairs(windows) do
+    if w == which then
+      table.remove(windows, i)
+      return
+    end
+  end
 end
 
 love.graphics.setBackgroundColor(0.5, 0.5, 0.5)
@@ -111,9 +123,19 @@ end
 function love.mousereleased(x, y, b)
   if windowControlButtonDown then
     if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
-      local action = window.buttons[windowControlButtonDown.buttonDown].action
-      if action == "maximize" then
-        local theWindow = windowControlButtonDown
+      local theWindow = windowControlButtonDown
+      local action = window.buttons[theWindow.buttonDown].action
+      if action == "close" then
+        theWindow.canvas = lg.newCanvas(theWindow.width, theWindow.height)
+        lg.setCanvas({theWindow.canvas, stencil = true})
+        theWindow:draw()
+        lg.setCanvas()
+        theWindow.closeAnim = 0
+        tweens:to(theWindow, 0.1, { closeAnim = 1 })
+            :oncomplete(function()
+              closeWindow(theWindow)
+            end)
+      elseif action == "maximize" then
         theWindow.buttonOver = nil
         if not theWindow.maximized then
           theWindow.originalX = theWindow.x
@@ -190,6 +212,9 @@ end
 
 function love.draw()
   for _, w in ipairs(windows) do
+    lg.push()
+    lg.translate(w.x, w.y)
     w:draw()
+    lg.pop()
   end
 end
