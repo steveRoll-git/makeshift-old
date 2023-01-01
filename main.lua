@@ -12,6 +12,7 @@ local imageEditor = require "windows.imageEditor"
 local colorPicker = require "windows.colorPicker"
 local window = require "ui.window"
 local popupMenu = require "ui.popupMenu"
+local orderedSet = require "util.orderedSet"
 
 love.window.maximize()
 
@@ -35,7 +36,7 @@ local activePopup
 local drawingObject = false
 local drawingObjectX, drawingObjectY
 
-local objects = {}
+local objects = orderedSet.new()
 
 local selectedObject
 local draggingObject = false
@@ -93,6 +94,15 @@ end
 
 function ClosePopupMenu()
   activePopup = nil
+end
+
+local function openObjectImageEditor(object)
+  local editor = imageEditor.new(object.imageData)
+  editor.onPaint = function(data)
+    object.imageData = data
+    object.image:replacePixels(data)
+  end
+  AddWindow(editor:window(object.x + object.width + 20, object.y))
 end
 
 love.graphics.setBackgroundColor(backgroundColor)
@@ -192,8 +202,8 @@ function love.mousepressed(x, y, b)
   end
   if b == 1 or b == 2 then
     selectedObject = nil
-    for i = #objects, 1, -1 do
-      local obj = objects[i]
+    for i = #objects.list, 1, -1 do
+      local obj = objects.list[i]
       if x >= obj.x and x < obj.x + obj.width and y >= obj.y and y < obj.y + obj.height then
         selectedObject = obj
         draggingObject = true
@@ -203,7 +213,25 @@ function love.mousepressed(x, y, b)
   end
   if b == 2 then
     if selectedObject then
-      -- TODO object context menu
+      OpenPopupMenu {
+        { text = "Paint", action = function()
+          openObjectImageEditor(selectedObject)
+        end },
+        { separator = true },
+        { text = "Bring to top", action = function()
+          objects:remove(selectedObject)
+          objects:add(selectedObject)
+        end },
+        { text = "Bring to bottom", action = function()
+          objects:remove(selectedObject)
+          objects:insertAt(1, selectedObject)
+        end },
+        { separator = true },
+        { text = "Remove", action = function()
+          objects:remove(selectedObject)
+          selectedObject = nil
+        end },
+      }
     else
       OpenPopupMenu {
         { text = "New object", action = function()
@@ -233,15 +261,12 @@ function love.mousereleased(x, y, b)
       width = math.abs(x - drawingObjectX),
       height = math.abs(y - drawingObjectY),
     }
-    new.image = love.graphics.newImage(love.image.newImageData(new.width, new.height))
-    table.insert(objects, new)
+    new.imageData = love.image.newImageData(new.width, new.height)
+    new.image = love.graphics.newImage(new.imageData)
+    objects:add(new)
     selectedObject = new
 
-    local editor = imageEditor.new(new.width, new.height)
-    editor.onPaint = function(data)
-      new.image:replacePixels(data)
-    end
-    AddWindow(editor:window(new.x + new.width + 20, new.y))
+    openObjectImageEditor(new)
 
     drawingObject = false
     drawingObjectX = nil
@@ -346,7 +371,7 @@ function love.resize(width, height)
 end
 
 function love.draw()
-  for _, obj in ipairs(objects) do
+  for _, obj in ipairs(objects.list) do
     lg.setColor(1, 1, 1)
     lg.draw(obj.image, obj.x, obj.y)
     lg.setLineWidth(1)
