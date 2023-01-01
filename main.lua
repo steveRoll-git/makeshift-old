@@ -7,6 +7,10 @@ function TODO(msg)
   error("todo: " .. msg, 1)
 end
 
+love.window.maximize()
+
+local prevWidth, prevHeight = love.graphics.getDimensions()
+
 local flux = require "lib.flux"
 local imageEditor = require "windows.imageEditor"
 local window = require "ui.window"
@@ -223,6 +227,18 @@ end
 
 function love.update(dt)
   tweens:update(dt)
+end
+
+function love.resize(width, height)
+  for _, w in ipairs(windows) do
+    if w.maximized then
+      w:resize(width, height)
+    else
+      w.x = (w.x / prevWidth) * width
+      w.y = (w.y / prevHeight) * height
+    end
+  end
+  prevWidth, prevHeight = width, height
 end
 
 function love.draw()
