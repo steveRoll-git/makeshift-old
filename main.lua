@@ -7,14 +7,15 @@ function TODO(msg)
   error("todo: " .. msg, 1)
 end
 
+local flux = require "lib.flux"
+local imageEditor = require "windows.imageEditor"
+local colorPicker = require "windows.colorPicker"
+local window = require "ui.window"
+local popupMenu = require "ui.popupMenu"
+
 love.window.maximize()
 
 local prevWidth, prevHeight = love.graphics.getDimensions()
-
-local flux = require "lib.flux"
-local imageEditor = require "windows.imageEditor"
-local window = require "ui.window"
-local popupMenu = require "ui.popupMenu"
 
 local resizeMargin = 12
 
@@ -37,6 +38,8 @@ local drawingObjectX, drawingObjectY
 local objects = {}
 
 local selectedObject
+
+local backgroundColor = { 0.7, 0.7, 0.7 }
 
 local tweens = flux.group()
 
@@ -91,7 +94,7 @@ function ClosePopupMenu()
   activePopup = nil
 end
 
-love.graphics.setBackgroundColor(0.7, 0.7, 0.7)
+love.graphics.setBackgroundColor(backgroundColor)
 
 function love.mousemoved(x, y, dx, dy)
   if not love.mouse.isDown(1) then
@@ -202,7 +205,12 @@ function love.mousepressed(x, y, b)
           love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
         end },
         { separator = true },
-        { text = "Background color" }
+        { text = "Background color", action = function()
+          AddWindow(colorPicker.new(backgroundColor, function(color)
+            backgroundColor = color
+            lg.setBackgroundColor(backgroundColor)
+          end):window(lg.getWidth() / 2 - 200, lg.getHeight() / 2 - 150, "Choose Background Color"))
+        end }
       }
     end
   end

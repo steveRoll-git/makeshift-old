@@ -182,8 +182,8 @@ function colorPicker:draw()
   end
 end
 
-function colorPicker:window(x, y)
-  local new = window.new(self, "Color Picker", 250, wheelSize + 100, x, y)
+function colorPicker:window(x, y, title)
+  local new = window.new(self, title, 250, wheelSize + 100, x, y)
   new.buttons = window.onlyCloseButton
   return new
 end
