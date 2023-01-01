@@ -38,6 +38,7 @@ local drawingObjectX, drawingObjectY
 local objects = {}
 
 local selectedObject
+local draggingObject = false
 
 local backgroundColor = { 0.7, 0.7, 0.7 }
 
@@ -117,6 +118,9 @@ function love.mousemoved(x, y, dx, dy)
     resizingWindow.maximized = false
   elseif windowContentDown then
     windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
+  elseif selectedObject and draggingObject and love.mouse.isDown(1) then
+    selectedObject.x = selectedObject.x + dx
+    selectedObject.y = selectedObject.y + dy
   else
     for i = #windows, 1, -1 do
       local w = windows[i]
@@ -188,9 +192,11 @@ function love.mousepressed(x, y, b)
   end
   if b == 1 or b == 2 then
     selectedObject = nil
-    for _, obj in ipairs(objects) do
+    for i = #objects, 1, -1 do
+      local obj = objects[i]
       if x >= obj.x and x < obj.x + obj.width and y >= obj.y and y < obj.y + obj.height then
         selectedObject = obj
+        draggingObject = true
         break
       end
     end
@@ -217,7 +223,9 @@ function love.mousepressed(x, y, b)
 end
 
 function love.mousereleased(x, y, b)
-  if drawingObject and drawingObjectX then
+  if draggingObject then
+    draggingObject = false
+  elseif drawingObject and drawingObjectX then
     -- TODO input object name before adding
     local new = {
       x = math.min(x, drawingObjectX),
