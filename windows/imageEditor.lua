@@ -436,6 +436,8 @@ function imageEditor:window(x, y)
   local new = window.new(self, "Image Editor", 400, 300, x, y)
   new.buttons = window.allButtons
   new.resizable = true
+  new.minWidth = self.toolbarWidth + self.paletteSquareSize * 3 + 50
+  new.minHeight = #self.tools * self.toolbarWidth + sideFont:getHeight() * 6
   return new
 end
 

@@ -104,7 +104,9 @@ function love.mousemoved(x, y, dx, dy)
     draggingWindow.x = x - dragX
     draggingWindow.y = y - dragY
   elseif resizingWindow then
-    resizingWindow:resize(math.max(x - resizeX, 100), math.max(y - resizeY, window.titleBarHeight + 50))
+    resizingWindow:resize(
+      math.max(x - resizeX, resizingWindow.minWidth or 100),
+      math.max(y - resizeY, resizingWindow.minHeight or (window.titleBarHeight + 50)))
     resizingWindow.maximized = false
   elseif windowContentDown then
     windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
