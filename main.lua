@@ -36,6 +36,8 @@ local drawingObjectX, drawingObjectY
 
 local objects = {}
 
+local selectedObject
+
 local tweens = flux.group()
 
 local function bringToTop(i)
@@ -179,21 +181,36 @@ function love.mousepressed(x, y, b)
   if b == 1 and drawingObject then
     -- TODO adjust for camera position
     drawingObjectX, drawingObjectY = x, y
+    return
+  end
+  if b == 1 or b == 2 then
+    selectedObject = nil
+    for _, obj in ipairs(objects) do
+      if x >= obj.x and x < obj.x + obj.width and y >= obj.y and y < obj.y + obj.height then
+        selectedObject = obj
+        break
+      end
+    end
   end
   if b == 2 then
-    OpenPopupMenu {
-      { text = "New object", action = function()
-        drawingObject = true
-        love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
-      end },
-      { separator = true },
-      { text = "Background color" }
-    }
+    if selectedObject then
+      -- TODO object context menu
+    else
+      OpenPopupMenu {
+        { text = "New object", action = function()
+          drawingObject = true
+          love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
+        end },
+        { separator = true },
+        { text = "Background color" }
+      }
+    end
   end
 end
 
 function love.mousereleased(x, y, b)
   if drawingObject and drawingObjectX then
+    -- TODO input object name before adding
     local new = {
       x = math.min(x, drawingObjectX),
       y = math.min(y, drawingObjectY),
@@ -202,6 +219,8 @@ function love.mousereleased(x, y, b)
     }
     new.image = love.graphics.newImage(love.image.newImageData(new.width, new.height))
     table.insert(objects, new)
+    selectedObject = new
+
     local editor = imageEditor.new(new.width, new.height)
     editor.onPaint = function(data)
       new.image:replacePixels(data)
@@ -316,6 +335,12 @@ function love.draw()
     lg.draw(obj.image, obj.x, obj.y)
     lg.setLineWidth(1)
     lg.rectangle("line", obj.x, obj.y, obj.width, obj.height)
+  end
+  if selectedObject then
+    lg.setColor(1, 1, 1)
+    lg.setLineWidth(1)
+    lg.rectangle("line", selectedObject.x - 5, selectedObject.y - 5, selectedObject.width + 10,
+      selectedObject.height + 10)
   end
   if drawingObject and drawingObjectX then
     lg.setColor(1, 1, 1)
