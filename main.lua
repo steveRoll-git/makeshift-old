@@ -14,6 +14,7 @@ local prevWidth, prevHeight = love.graphics.getDimensions()
 local flux = require "lib.flux"
 local imageEditor = require "windows.imageEditor"
 local window = require "ui.window"
+local popupMenu = require "ui.popupMenu"
 
 local resizeMargin = 12
 
@@ -30,6 +31,8 @@ local resizeX, resizeY
 
 local windowContentDown
 local windowControlButtonDown
+
+local activePopup
 
 local tweens = flux.group()
 
@@ -71,13 +74,26 @@ function StartClosingWindow(w)
       end)
 end
 
+function OpenPopupMenu(items, x, y)
+  if not x then
+    x, y = love.mouse.getPosition()
+  end
+  activePopup = popupMenu.new(items, x, y, 140)
+end
+
+function ClosePopupMenu()
+  activePopup = nil
+end
+
 love.graphics.setBackgroundColor(0.5, 0.5, 0.5)
 
 function love.mousemoved(x, y, dx, dy)
   if not love.mouse.isDown(1) then
     love.mouse.setCursor()
   end
-  if draggingWindow then
+  if activePopup then
+    activePopup:mousemoved(x, y, dx, dy)
+  elseif draggingWindow then
     if draggingWindow.maximized then
       draggingWindow:resize(draggingWindow.originalWidth, draggingWindow.originalHeight)
       draggingWindow.maximized = false
@@ -113,6 +129,14 @@ function love.mousemoved(x, y, dx, dy)
 end
 
 function love.mousepressed(x, y, b)
+  if activePopup then
+    if activePopup:inside(x, y) then
+      activePopup:mousepressed(x, y, b)
+      return
+    else
+      activePopup = nil
+    end
+  end
   for i = #windows, 1, -1 do
     local w = windows[i]
     if not w.closeAnim and w:inside(x, y) then
@@ -130,7 +154,8 @@ function love.mousepressed(x, y, b)
       else
         local right = w.x + w.width
         local bottom = w.y + w.height
-        if w.resizable and not w.maximized and x >= right - resizeMargin and x <= right and y >= bottom - resizeMargin and y <= bottom then
+        if w.resizable and not w.maximized and
+            x >= right - resizeMargin and x <= right and y >= bottom - resizeMargin and y <= bottom then
           resizingWindow = w
           resizeX = x - w.width
           resizeY = y - w.height
@@ -139,13 +164,22 @@ function love.mousepressed(x, y, b)
           windowContentDown = w
         end
       end
-      break
+      return
     end
+  end
+  if b == 2 then
+    OpenPopupMenu {
+      { text = "New object" },
+      { separator = true },
+      { text = "Background color" }
+    }
   end
 end
 
 function love.mousereleased(x, y, b)
-  if windowControlButtonDown then
+  if activePopup then
+    activePopup:mousereleased(x, y, b)
+  elseif windowControlButtonDown then
     if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
       local theWindow = windowControlButtonDown
       local action = theWindow.buttons[theWindow.buttonDown].action
@@ -247,5 +281,8 @@ function love.draw()
     lg.translate(w.x, w.y)
     w:draw()
     lg.pop()
+  end
+  if activePopup then
+    activePopup:draw()
   end
 end

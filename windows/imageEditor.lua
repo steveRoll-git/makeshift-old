@@ -10,6 +10,7 @@ local sign          = require "util.sign"
 local normalize     = require "util.normalize"
 local colorPicker   = require "windows.colorPicker"
 local window        = require "ui.window"
+local popupMenu     = require "ui.popupMenu"
 
 local defaultPalette = {
   { 1, 1, 1, 1 },
@@ -38,8 +39,6 @@ local fillOffsets = {
 
 local sideFont = lg.newFont(FontName, 12)
 
--- TODO:
--- remove palette colors with right-click menu
 local imageEditor = {}
 imageEditor.__index = imageEditor
 
@@ -269,17 +268,27 @@ function imageEditor:mousemoved(x, y, dx, dy)
 end
 
 function imageEditor:mousepressed(x, y, b)
-  if b == 1 and x < self.palettePanelWidth then
+  if x < self.palettePanelWidth then
     local index = math.floor(y / self.paletteSquareSize) * self.paletteColumns + math.floor(x / self.paletteSquareSize) +
         1
-    if index == #self.paletteColors + 1 then
+    if b == 1 and index == #self.paletteColors + 1 then
       local picker = colorPicker.new(self.paletteColors[self.selectedColor], function(color)
         table.insert(self.paletteColors, color)
         self.selectedColor = #self.paletteColors
       end)
       AddWindow(picker:window(self.window.x + 50, self.window.y + 50))
     elseif index >= 1 and index <= #self.paletteColors then
-      self.selectedColor = index
+      if b == 1 then
+        self.selectedColor = index
+      elseif b == 2 then
+        OpenPopupMenu {
+          { text = "Remove color", action = function()
+            if #self.paletteColors > 1 then
+              table.remove(self.paletteColors, index)
+            end
+          end }
+        }
+      end
     end
   elseif b == 1 and x >= self.windowWidth - self.toolbarWidth then
     local index = math.floor(y / self.toolbarWidth) + 1
@@ -420,9 +429,6 @@ function imageEditor:draw()
   lg.setLineWidth(2)
   lg.line(x + self.paletteSquareSize / 2, y + 4, x + self.paletteSquareSize / 2, y + self.paletteSquareSize - 4)
   lg.line(x + 4, y + self.paletteSquareSize / 2, x + self.paletteSquareSize - 4, y + self.paletteSquareSize / 2)
-
-  --lg.setColor(1,1,1)
-  --lg.print(self.zoom, self.palettePanelWidth, 0)
 end
 
 function imageEditor:window(x, y)
