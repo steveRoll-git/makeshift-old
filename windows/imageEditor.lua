@@ -8,6 +8,8 @@ local compareColors = require "util.compareColors"
 local posHash = require "util.posHash"
 local sign = require "util.sign"
 local normalize = require "util.normalize"
+local colorPicker = require "windows.colorPicker"
+local window      = require "ui.window"
 
 local defaultPalette = {
   {1,1,1,1},
@@ -36,14 +38,13 @@ local fillOffsets = {
 
 local sideFont = lg.newFont(FontName, 12)
 
+-- TODO:
+-- remove palette colors with right-click menu
 local imageEditor = {}
 imageEditor.__index = imageEditor
 
-function imageEditor.new(windowWidth, windowHeight, imageWidth, imageHeight)
+function imageEditor.new(imageWidth, imageHeight)
   local self = setmetatable({}, imageEditor)
-
-  self.windowWidth = windowWidth
-  self.windowHeight = windowHeight
 
   self.paletteColors = shallowCopy(defaultPalette)
   self.selectedColor = 1
@@ -63,8 +64,6 @@ function imageEditor.new(windowWidth, windowHeight, imageWidth, imageHeight)
 
   self.zoom = 1
   self.wheelFactor = 0.1
-  self.transX = windowWidth / 2 - imageData:getWidth() / 2
-  self.transY = windowHeight / 2 - imageData:getHeight() / 2
 
   self.mouseX = 0
   self.mouseY = 0
@@ -215,7 +214,11 @@ function imageEditor:mousepressed(x, y, b)
   if b == 1 and x < self.palettePanelWidth then
     local index = math.floor(y / self.paletteSquareSize) * self.paletteColumns + math.floor(x / self.paletteSquareSize) + 1
     if index == #self.paletteColors + 1 then
-      TODO("add color dialog")
+      local picker = colorPicker.new(self.paletteColors[self.selectedColor], function(color)
+        table.insert(self.paletteColors, color)
+        self.selectedColor = #self.paletteColors
+      end)
+      AddWindow(picker:window(self.window.x + 50, self.window.y + 50))
     elseif index >= 1 and index <= #self.paletteColors then
       self.selectedColor = index
     end
@@ -282,8 +285,13 @@ function imageEditor:keypressed(k)
 end
 
 function imageEditor:resize(w, h, prevW, prevH)
-  self.transX = self.transX - (prevW - w) / 2
-  self.transY = self.transY - (prevH - h) / 2
+  if not self.transX then
+    self.transX = w / 2 - self.imageData:getWidth() / 2
+    self.transY = h / 2 - self.imageData:getHeight() / 2
+  else
+    self.transX = self.transX - (prevW - w) / 2
+    self.transY = self.transY - (prevH - h) / 2
+  end
 end
 
 function imageEditor:draw()
@@ -354,6 +362,12 @@ function imageEditor:draw()
 
   --lg.setColor(1,1,1)
   --lg.print(self.zoom, self.palettePanelWidth, 0)
+end
+
+function imageEditor:window(x, y)
+  local new = window.new(self, "Image Editor", 400, 300, x, y)
+  new.buttons = window.allButtons
+  return new
 end
 
 return imageEditor

@@ -7,45 +7,48 @@ local titleBarHeight = 24
 local titleFont = lg.newFont(FontName, titleBarHeight - 6)
 local cornerSize = 7
 
-local buttons = {
-  {
-    action = "close",
-    draw = function()
-      lg.setColor(1, 1, 1)
-      lg.setLineWidth(1)
-      local q = titleBarHeight / 4
-      lg.line(q, q, q * 3, q * 3)
-      lg.line(q * 3, q, q, q * 3)
-    end
-  },
-  {
-    action = "maximize",
-    draw = function()
-      lg.setColor(1, 1, 1)
-      lg.setLineWidth(1)
-      local q = titleBarHeight / 4
-      local h = q * 1.5
-      lg.rectangle("line", q, titleBarHeight / 2 - h / 2, q * 2, h)
-    end
-  },
+local closeButton = {
+  action = "close",
+  draw = function()
+    lg.setColor(1, 1, 1)
+    lg.setLineWidth(1)
+    local q = titleBarHeight / 4
+    lg.line(q, q, q * 3, q * 3)
+    lg.line(q * 3, q, q, q * 3)
+  end
+}
+local maximizeButton = {
+  action = "maximize",
+  draw = function()
+    lg.setColor(1, 1, 1)
+    lg.setLineWidth(1)
+    local q = titleBarHeight / 4
+    local h = q * 1.5
+    lg.rectangle("line", q, titleBarHeight / 2 - h / 2, q * 2, h)
+  end
 }
 
 local window = {}
 window.__index = window
 
 window.titleBarHeight = titleBarHeight
-window.buttons = buttons
 
-function window.new(content, title, width, height)
+window.allButtons = { closeButton, maximizeButton }
+window.onlyCloseButton = { closeButton }
+
+function window.new(content, title, width, height, x, y)
   local self = setmetatable({}, window)
-  self:init(content, title, width, height)
+  self:init(content, title, width, height, x, y)
   return self
 end
 
-function window:init(content, title, width, height)
+function window:init(content, title, width, height, x, y)
   self.content = content
+  self.content.window = self
   self.title = title
   self:resize(width, height)
+  self.x = x
+  self.y = y
   self.stencilWhole = function()
     lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
   end
@@ -66,7 +69,7 @@ function window:getTitleButtonOver(x, y)
   if y < self.y or y > self.y + titleBarHeight or x > self.x + self.width then
     return nil
   end
-  for i = 1, #buttons do
+  for i = 1, #self.buttons do
     if x >= self.x + self.width - titleBarHeight * i then
       return i
     end
@@ -107,7 +110,7 @@ function window:draw()
 
   lg.push()
   lg.translate(self.width - titleBarHeight, 0)
-  for i, btn in ipairs(buttons) do
+  for i, btn in ipairs(self.buttons) do
     lg.setColor(1, 1, 1)
     lg.setLineWidth(1)
     btn.draw()

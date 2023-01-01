@@ -13,14 +13,8 @@ local window = require "ui.window"
 
 local resizeMargin = 12
 
-local test = window.new(
-  imageEditor.new(300, 200, 200, 200), "editor wow", 300, 200)
-test.x = 50
-test.y = 10
-local test2 = window.new(
-  imageEditor.new(200, 200, 300, 400), "another one", 200, 200)
-test2.x = 450
-test2.y = 10
+local test = imageEditor.new(300, 200):window(100, 10)
+local test2 = imageEditor.new(200, 200):window(450, 100)
 
 local windows = { test, test2 }
 
@@ -48,14 +42,42 @@ local function closeWindow(which)
   end
 end
 
+function AddWindow(w)
+  w.canvas = lg.newCanvas(w.width, w.height)
+  lg.setCanvas({ w.canvas, stencil = true })
+  w:draw()
+  lg.setCanvas()
+  w.closeAnim = 1
+  tweens:to(w, 0.1, { closeAnim = 0 })
+      :oncomplete(function()
+        w.closeAnim = nil
+      end)
+  table.insert(windows, w)
+end
+
+function StartClosingWindow(w)
+  w.canvas = lg.newCanvas(w.width, w.height)
+  lg.setCanvas({ w.canvas, stencil = true })
+  w:draw()
+  lg.setCanvas()
+  w.closeAnim = 0
+  tweens:to(w, 0.1, { closeAnim = 1 })
+      :oncomplete(function()
+        closeWindow(w)
+      end)
+end
+
 love.graphics.setBackgroundColor(0.5, 0.5, 0.5)
 
 function love.mousemoved(x, y, dx, dy)
+  if not love.mouse.isDown(1) then
+    love.mouse.setCursor()
+  end
   if draggingWindow then
     if draggingWindow.maximized then
       draggingWindow:resize(draggingWindow.originalWidth, draggingWindow.originalHeight)
       draggingWindow.maximized = false
-      dragX = math.min(dragX, draggingWindow.width - window.titleBarHeight * #window.buttons)
+      dragX = math.min(dragX, draggingWindow.width - window.titleBarHeight * #draggingWindow.buttons)
     end
     draggingWindow.x = x - dragX
     draggingWindow.y = y - dragY
@@ -75,7 +97,6 @@ function love.mousemoved(x, y, dx, dy)
           w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
         else
           w.buttonOver = w:getTitleButtonOver(x, y)
-          love.mouse.setCursor()
         end
         for j = i - 1, 1, -1 do
           windows[j].buttonOver = nil
@@ -83,7 +104,6 @@ function love.mousemoved(x, y, dx, dy)
         goto anyOver
       end
     end
-    love.mouse.setCursor()
     ::anyOver::
   end
 end
@@ -92,6 +112,7 @@ function love.mousepressed(x, y, b)
   for i = #windows, 1, -1 do
     local w = windows[i]
     if not w.closeAnim and w:inside(x, y) then
+      bringToTop(i)
       if y < w.y + window.titleBarHeight then
         local button = w:getTitleButtonOver(x, y)
         if button then
@@ -114,7 +135,6 @@ function love.mousepressed(x, y, b)
           windowContentDown = w
         end
       end
-      bringToTop(i)
       break
     end
   end
@@ -124,17 +144,9 @@ function love.mousereleased(x, y, b)
   if windowControlButtonDown then
     if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
       local theWindow = windowControlButtonDown
-      local action = window.buttons[theWindow.buttonDown].action
+      local action = theWindow.buttons[theWindow.buttonDown].action
       if action == "close" then
-        theWindow.canvas = lg.newCanvas(theWindow.width, theWindow.height)
-        lg.setCanvas({theWindow.canvas, stencil = true})
-        theWindow:draw()
-        lg.setCanvas()
-        theWindow.closeAnim = 0
-        tweens:to(theWindow, 0.1, { closeAnim = 1 })
-            :oncomplete(function()
-              closeWindow(theWindow)
-            end)
+        StartClosingWindow(theWindow)
       elseif action == "maximize" then
         theWindow.buttonOver = nil
         if not theWindow.maximized then
@@ -203,7 +215,10 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(k)
-  windows[#windows]:keypressed(k)
+  local last = windows[#windows].content
+  if last.keypressed then
+    last:keypressed(k)
+  end
 end
 
 function love.update(dt)
