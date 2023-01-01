@@ -41,6 +41,7 @@ function popupMenu:init(items, x, y, width)
     end
   end
   self.height = buttonY
+  self.scaleY = 1
 end
 
 function popupMenu:inside(x, y)
@@ -61,6 +62,7 @@ end
 function popupMenu:draw()
   lg.push()
   lg.translate(self.x, self.y)
+  lg.scale(1, self.scaleY)
 
   lg.setColor(0, 0, 0, 0.9)
   lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)

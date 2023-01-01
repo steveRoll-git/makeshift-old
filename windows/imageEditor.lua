@@ -285,6 +285,7 @@ function imageEditor:mousepressed(x, y, b)
           { text = "Remove color", action = function()
             if #self.paletteColors > 1 then
               table.remove(self.paletteColors, index)
+              self.selectedColor = math.min(self.selectedColor, #self.paletteColors)
             end
           end }
         }

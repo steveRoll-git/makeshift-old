@@ -79,6 +79,8 @@ function OpenPopupMenu(items, x, y)
     x, y = love.mouse.getPosition()
   end
   activePopup = popupMenu.new(items, x, y, 140)
+  activePopup.scaleY = 0.9
+  tweens:to(activePopup, 0.2, { scaleY = 1 }):ease("quintout")
 end
 
 function ClosePopupMenu()
