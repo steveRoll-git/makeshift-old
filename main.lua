@@ -18,10 +18,7 @@ local popupMenu = require "ui.popupMenu"
 
 local resizeMargin = 12
 
-local test = imageEditor.new(300, 200):window(100, 10)
-local test2 = imageEditor.new(200, 200):window(450, 100)
-
-local windows = { test, test2 }
+local windows = {}
 
 local draggingWindow
 local dragX, dragY
@@ -33,6 +30,11 @@ local windowContentDown
 local windowControlButtonDown
 
 local activePopup
+
+local drawingObject = false
+local drawingObjectX, drawingObjectY
+
+local objects = {}
 
 local tweens = flux.group()
 
@@ -87,7 +89,7 @@ function ClosePopupMenu()
   activePopup = nil
 end
 
-love.graphics.setBackgroundColor(0.5, 0.5, 0.5)
+love.graphics.setBackgroundColor(0.7, 0.7, 0.7)
 
 function love.mousemoved(x, y, dx, dy)
   if not love.mouse.isDown(1) then
@@ -127,6 +129,9 @@ function love.mousemoved(x, y, dx, dy)
         end
         goto anyOver
       end
+    end
+    if drawingObject then
+      love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
     end
     ::anyOver::
   end
@@ -171,9 +176,16 @@ function love.mousepressed(x, y, b)
       return
     end
   end
+  if b == 1 and drawingObject then
+    -- TODO adjust for camera position
+    drawingObjectX, drawingObjectY = x, y
+  end
   if b == 2 then
     OpenPopupMenu {
-      { text = "New object" },
+      { text = "New object", action = function()
+        drawingObject = true
+        love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
+      end },
       { separator = true },
       { text = "Background color" }
     }
@@ -181,7 +193,26 @@ function love.mousepressed(x, y, b)
 end
 
 function love.mousereleased(x, y, b)
-  if activePopup then
+  if drawingObject and drawingObjectX then
+    local new = {
+      x = math.min(x, drawingObjectX),
+      y = math.min(y, drawingObjectY),
+      width = math.abs(x - drawingObjectX),
+      height = math.abs(y - drawingObjectY),
+    }
+    new.image = love.graphics.newImage(love.image.newImageData(new.width, new.height))
+    table.insert(objects, new)
+    local editor = imageEditor.new(new.width, new.height)
+    editor.onPaint = function(data)
+      new.image:replacePixels(data)
+    end
+    AddWindow(editor:window(new.x + new.width + 20, new.y))
+
+    drawingObject = false
+    drawingObjectX = nil
+    drawingObjectY = nil
+    love.mouse.setCursor()
+  elseif activePopup then
     activePopup:mousereleased(x, y, b)
   elseif windowControlButtonDown then
     if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
@@ -280,6 +311,19 @@ function love.resize(width, height)
 end
 
 function love.draw()
+  for _, obj in ipairs(objects) do
+    lg.setColor(1, 1, 1)
+    lg.draw(obj.image, obj.x, obj.y)
+    lg.setLineWidth(1)
+    lg.rectangle("line", obj.x, obj.y, obj.width, obj.height)
+  end
+  if drawingObject and drawingObjectX then
+    lg.setColor(1, 1, 1)
+    lg.setLineWidth(1)
+    -- TODO adjust for camera position
+    lg.rectangle("line", drawingObjectX, drawingObjectY, love.mouse.getX() - drawingObjectX,
+      love.mouse.getY() - drawingObjectY)
+  end
   for _, w in ipairs(windows) do
     lg.push()
     lg.translate(w.x, w.y)

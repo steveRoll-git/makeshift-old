@@ -144,6 +144,9 @@ end
 
 function imageEditor:updateImage()
   self.drawableImage:replacePixels(self.imageData)
+  if self.onPaint then
+    self.onPaint(self.imageData)
+  end
 end
 
 function imageEditor:screenToImage(x, y)
