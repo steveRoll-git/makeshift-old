@@ -137,7 +137,7 @@ function window:draw()
   self.content:draw()
   lg.pop()
 
-  if not self.maximized then
+  if self.resizable and not self.maximized then
     lg.setColor(1, 1, 1, outlineColor)
     lg.setLineWidth(1)
     lg.line(self.width - cornerSize - 1, self.height, self.width, self.height - cornerSize - 1)

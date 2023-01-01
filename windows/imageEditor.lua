@@ -428,6 +428,7 @@ end
 function imageEditor:window(x, y)
   local new = window.new(self, "Image Editor", 400, 300, x, y)
   new.buttons = window.allButtons
+  new.resizable = true
   return new
 end
 

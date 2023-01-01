@@ -95,7 +95,7 @@ function love.mousemoved(x, y, dx, dy)
       local w = windows[i]
       w.buttonOver = nil
       if w:inside(x, y) then
-        if not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
+        if w.resizable and not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
           love.mouse.setCursor(love.mouse.getSystemCursor("sizenwse"))
         elseif y > w.y + window.titleBarHeight then
           w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
@@ -130,7 +130,7 @@ function love.mousepressed(x, y, b)
       else
         local right = w.x + w.width
         local bottom = w.y + w.height
-        if not w.maximized and x >= right - resizeMargin and x <= right and y >= bottom - resizeMargin and y <= bottom then
+        if w.resizable and not w.maximized and x >= right - resizeMargin and x <= right and y >= bottom - resizeMargin and y <= bottom then
           resizingWindow = w
           resizeX = x - w.width
           resizeY = y - w.height
