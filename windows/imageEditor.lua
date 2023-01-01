@@ -1,28 +1,28 @@
 local love = love
 local lg = love.graphics
 
-local shallowCopy = require "util.shallowCopy"
-local dist = require "util.dist"
-local clamp = require "util.clamp"
+local shallowCopy   = require "util.shallowCopy"
+local dist          = require "util.dist"
+local clamp         = require "util.clamp"
 local compareColors = require "util.compareColors"
-local posHash = require "util.posHash"
-local sign = require "util.sign"
-local normalize = require "util.normalize"
-local colorPicker = require "windows.colorPicker"
-local window      = require "ui.window"
+local posHash       = require "util.posHash"
+local sign          = require "util.sign"
+local normalize     = require "util.normalize"
+local colorPicker   = require "windows.colorPicker"
+local window        = require "ui.window"
 
 local defaultPalette = {
-  {1,1,1,1},
-  {0,0,0,1},
-  {1,0,0,1},
-  {0,1,0,1},
-  {0,0,1,1},
-  {1,1,0,1},
-  {0,1,1,1},
-  {1,0,1,1},
+  { 1, 1, 1, 1 },
+  { 0, 0, 0, 1 },
+  { 1, 0, 0, 1 },
+  { 0, 1, 0, 1 },
+  { 0, 0, 1, 1 },
+  { 1, 1, 0, 1 },
+  { 0, 1, 1, 1 },
+  { 1, 0, 1, 1 },
 }
 
-local transparentColor = {0,0,0,0}
+local transparentColor = { 0, 0, 0, 0 }
 
 local images = require "images"
 
@@ -30,10 +30,10 @@ local transparency = images["transparency.png"]
 transparency:setWrap("repeat")
 
 local fillOffsets = {
-  {1, 0},
-  {-1, 0},
-  {0, 1},
-  {0, -1},
+  { 1, 0 },
+  { -1, 0 },
+  { 0, 1 },
+  { 0, -1 },
 }
 
 local sideFont = lg.newFont(FontName, 12)
@@ -97,7 +97,7 @@ function imageEditor.new(imageWidth, imageHeight)
         end
 
         self.clean = false
-        local queue = {[posHash(x, y)] = true}
+        local queue = { [posHash(x, y)] = true }
         while next(queue) do
           local pos = next(queue)
           queue[next(queue)] = nil
@@ -108,7 +108,8 @@ function imageEditor.new(imageWidth, imageHeight)
             local x1, y1 = x + dir[1], y + dir[2]
             if self:inRange(x1, y1) then
               local r, g, b, a = self.imageData:getPixel(x1, y1)
-              if compareColors(ir, ig, ib, ia, self.imageData:getPixel(x1, y1)) and not compareColors(r,g,b,a, unpack(self.paletteColors[self.selectedColor])) then
+              if compareColors(ir, ig, ib, ia, self.imageData:getPixel(x1, y1)) and
+                  not compareColors(r, g, b, a, unpack(self.paletteColors[self.selectedColor])) then
                 queue[posHash(x1, y1)] = true
               end
             end
@@ -138,7 +139,8 @@ function imageEditor:inRange(x, y)
 end
 
 function imageEditor:updateTransparencyQuad()
-  self.transparencyQuad:setViewport(0, 0, self.imageData:getWidth() * self.zoom, self.imageData:getHeight() * self.zoom, transparency:getDimensions())
+  self.transparencyQuad:setViewport(0, 0, self.imageData:getWidth() * self.zoom, self.imageData:getHeight() * self.zoom,
+    transparency:getDimensions())
 end
 
 function imageEditor:updateImage()
@@ -149,17 +151,79 @@ function imageEditor:screenToImage(x, y)
   return math.floor((x - self.transX) / self.zoom), math.floor((y - self.transY) / self.zoom)
 end
 
+function imageEditor:setPixel(x, y, color)
+  if self:inRange(x, y) then
+    self.imageData:setPixel(x, y, color)
+  end
+end
+
+-- Algorithm from http://members.chello.at/easyfilter/bresenham.html
+function imageEditor:fillEllipse(x0, y0, x1, y1, color)
+  if (x0 == x1 and y0 == y1) then
+    self:setPixel(x0, y0, color)
+    return
+  end
+  local a = math.abs(x1 - x0)
+  local b = math.abs(y1 - y0)
+  local b1 = b % 2
+  local dx = 4 * (1 - a) * b * b
+  local dy = 4 * (b1 + 1) * a * a
+  local err = dx + dy + b1 * a * a
+  local e2
+
+  if (x0 > x1) then
+    x0 = x1
+    x1 = x1 + a
+  end
+  if (y0 > y1) then
+    y0 = y1
+  end
+  y0 = y0 + (b + 1) / 2
+  y1 = y0 - b1
+  a = a * 8 * a
+  b1 = 8 * b * b
+
+  repeat
+    for x = x0, x1 do
+      self:setPixel(x, y0, color)
+      self:setPixel(x, y1, color)
+    end
+    e2 = 2 * err
+    if (e2 <= dy) then
+      y0 = y0 + 1
+      y1 = y1 - 1
+      dy = dy + a
+      err = err + dy
+    end
+    if (e2 >= dx or 2 * err > dy) then
+      x0 = x0 + 1
+      x1 = x1 - 1
+      dx = dx + b1
+      err = err + dx
+    end
+  until (x0 > x1)
+
+  while (y0 - y1 < b) do
+    self:setPixel(x0 - 1, y0, color)
+    self:setPixel(x1 + 1, y0, color)
+    y0 = y0 + 1
+    self:setPixel(x0 - 1, y1, color)
+    self:setPixel(x1 + 1, y1, color)
+    y1 = y1 - 1
+  end
+end
+
 function imageEditor:paintCircle(toX, toY, fromX, fromY, color)
   local size = self.toolSize
-  
+
   local currentX, currentY = fromX, fromY
-  
+
   local dirX, dirY = toX - fromX, toY - fromY
   local step = math.abs(dirX) > math.abs(dirY) and math.abs(dirX) or math.abs(dirY)
   local nextX, nextY = currentX, currentY
 
   local count = 0
-  
+
   repeat
     currentX = nextX
     currentY = nextY
@@ -167,13 +231,7 @@ function imageEditor:paintCircle(toX, toY, fromX, fromY, color)
     local y = currentY + 0.5
     local x1, y1 = x - size / 2, y - size / 2
     local x2, y2 = x + size / 2 - 1, y + size / 2 - 1
-    for ix = x1, x2 do
-      for iy = y1, y2 do
-        if dist(ix, iy, x, y) <= math.ceil(size / 2 + (size < 4 and 1 or 0)) and self:inRange(ix, iy) then
-          self.imageData:setPixel(ix, iy, color)
-        end
-      end
-    end
+    self:fillEllipse(x1, y1, x2, y2, color)
     nextX, nextY = currentX + dirX / step, currentY + dirY / step
     count = count + 1
   until dist(currentX, currentY, toX, toY) <= 0.5
@@ -212,7 +270,8 @@ end
 
 function imageEditor:mousepressed(x, y, b)
   if b == 1 and x < self.palettePanelWidth then
-    local index = math.floor(y / self.paletteSquareSize) * self.paletteColumns + math.floor(x / self.paletteSquareSize) + 1
+    local index = math.floor(y / self.paletteSquareSize) * self.paletteColumns + math.floor(x / self.paletteSquareSize) +
+        1
     if index == #self.paletteColors + 1 then
       local picker = colorPicker.new(self.paletteColors[self.selectedColor], function(color)
         table.insert(self.paletteColors, color)
@@ -297,14 +356,14 @@ end
 function imageEditor:draw()
   lg.push()
   lg.translate(math.floor(self.transX), math.floor(self.transY))
-  lg.setColor(1,1,1)
+  lg.setColor(1, 1, 1)
   lg.draw(transparency, self.transparencyQuad)
   lg.scale(self.zoom)
-  lg.setColor(1,1,1)
+  lg.setColor(1, 1, 1)
   lg.draw(self.drawableImage)
   lg.pop()
 
-  lg.setColor(0,0,0, 0.8)
+  lg.setColor(0, 0, 0, 0.8)
   lg.rectangle("fill", 0, 0, self.palettePanelWidth, self.windowHeight)
 
   -- palette
@@ -312,7 +371,7 @@ function imageEditor:draw()
   for i, color in ipairs(self.paletteColors) do
     lg.setColor(0, 0, 0)
     lg.rectangle("fill", x, y, self.paletteSquareSize, self.paletteSquareSize)
-    lg.setColor(1,1,1)
+    lg.setColor(1, 1, 1)
     lg.draw(transparency, x + 2, y + 2)
     lg.setColor(color)
     lg.rectangle("fill", x + 2, y + 2, self.paletteSquareSize - 4, self.paletteSquareSize - 4)
@@ -325,25 +384,27 @@ function imageEditor:draw()
   end
 
   -- toolbar
-  lg.setColor(0,0,0, 0.8)
+  lg.setColor(0, 0, 0, 0.8)
   lg.rectangle("fill", self.windowWidth - self.toolbarWidth, 0, self.toolbarWidth, self.windowHeight)
   for i, tool in ipairs(self.tools) do
     local x, y = self.windowWidth - self.toolbarWidth, (i - 1) * self.toolbarWidth
-    lg.setColor(1,1,1)
+    lg.setColor(1, 1, 1)
     if tool == self.currentTool then
       lg.setLineWidth(2)
       lg.rectangle("line", x, y, self.toolbarWidth, self.toolbarWidth, 8, 8)
     end
     lg.draw(tool.icon, x, y)
   end
-  lg.setColor(1,1,1)
+  lg.setColor(1, 1, 1)
   lg.setFont(sideFont)
-  lg.printf(("Size:\n%d"):format(self.toolSize), self.windowWidth - self.toolbarWidth, self.toolbarWidth * #self.tools, self.toolbarWidth, "center")
-  lg.printf(("Zoom:\n%d%%"):format(math.floor(self.zoom * 100)), self.windowWidth - self.toolbarWidth, self.windowHeight - sideFont:getHeight() * 2, self.toolbarWidth, "center")
+  lg.printf(("Size:\n%d"):format(self.toolSize), self.windowWidth - self.toolbarWidth, self.toolbarWidth * #self.tools,
+    self.toolbarWidth, "center")
+  lg.printf(("Zoom:\n%d%%"):format(math.floor(self.zoom * 100)), self.windowWidth - self.toolbarWidth,
+    self.windowHeight - sideFont:getHeight() * 2, self.toolbarWidth, "center")
 
   do
     -- selected color crosshair
-    lg.setColor(1,1,1)
+    lg.setColor(1, 1, 1)
     lg.setLineWidth(2)
     local x = ((self.selectedColor - 1) % self.paletteColumns) * self.paletteSquareSize
     local y = math.floor((self.selectedColor - 1) / self.paletteColumns) * self.paletteSquareSize
@@ -355,10 +416,10 @@ function imageEditor:draw()
   end
 
   -- "new color" plus symbol
-  lg.setColor(1,1,1)
+  lg.setColor(1, 1, 1)
   lg.setLineWidth(2)
-  lg.line(x + self.paletteSquareSize / 2, y + 4, x + self.paletteSquareSize / 2, y + self.paletteSquareSize - 4) 
-  lg.line(x + 4, y + self.paletteSquareSize / 2, x + self.paletteSquareSize - 4, y + self.paletteSquareSize / 2) 
+  lg.line(x + self.paletteSquareSize / 2, y + 4, x + self.paletteSquareSize / 2, y + self.paletteSquareSize - 4)
+  lg.line(x + 4, y + self.paletteSquareSize / 2, x + self.paletteSquareSize - 4, y + self.paletteSquareSize / 2)
 
   --lg.setColor(1,1,1)
   --lg.print(self.zoom, self.palettePanelWidth, 0)
@@ -371,4 +432,3 @@ function imageEditor:window(x, y)
 end
 
 return imageEditor
-
