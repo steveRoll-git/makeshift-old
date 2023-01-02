@@ -358,7 +358,7 @@ end
 
 function imageEditor:resize(w, h, prevW, prevH)
   if not self.transX then
-    self.transX = w / 2 - self.imageData:getWidth() / 2
+    self.transX = self.palettePanelWidth + (w - self.palettePanelWidth - self.toolbarWidth) / 2 - self.imageData:getWidth() / 2
     self.transY = h / 2 - self.imageData:getHeight() / 2
   else
     self.transX = self.transX - (prevW - w) / 2
@@ -436,11 +436,14 @@ function imageEditor:draw()
 end
 
 function imageEditor:window(x, y)
-  local new = window.new(self, "Image Editor", 400, 300, x, y)
+  local new = window.new(self, "Image Editor",
+    self.imageData:getWidth() + self.toolbarWidth + self.palettePanelWidth + 50,
+    self.imageData:getHeight() + 80, x, y)
   new.buttons = window.allButtons
   new.resizable = true
   new.minWidth = self.toolbarWidth + self.paletteSquareSize * 3 + 50
   new.minHeight = #self.tools * self.toolbarWidth + sideFont:getHeight() * 6
+  new:resize(math.max(new.width, new.minWidth), math.max(new.height, new.minHeight))
   return new
 end
 

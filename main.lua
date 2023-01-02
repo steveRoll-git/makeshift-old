@@ -3,16 +3,17 @@ local lg = love.graphics
 
 FontName = "fonts/PT Root UI_Regular.ttf"
 
-function TODO(msg)
-  error("todo: " .. msg, 1)
-end
-
 local flux = require "lib.flux"
 local imageEditor = require "windows.imageEditor"
 local colorPicker = require "windows.colorPicker"
 local window = require "ui.window"
 local popupMenu = require "ui.popupMenu"
 local orderedSet = require "util.orderedSet"
+local clamp = require "util.clamp"
+
+function TODO(msg)
+  error("todo: " .. msg, 1)
+end
 
 love.window.maximize()
 
@@ -102,7 +103,10 @@ local function openObjectImageEditor(object)
     object.imageData = data
     object.image:replacePixels(data)
   end
-  AddWindow(editor:window(object.x + object.width + 20, object.y))
+  local theWindow = editor:window(object.x + object.width + 20, object.y)
+  theWindow.x = clamp(theWindow.x, 0, lg.getWidth() - theWindow.width)
+  theWindow.y = clamp(theWindow.y, 0, lg.getHeight() - theWindow.height)
+  AddWindow(theWindow)
 end
 
 love.graphics.setBackgroundColor(backgroundColor)
