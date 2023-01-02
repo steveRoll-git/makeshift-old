@@ -10,6 +10,7 @@ local window = require "ui.window"
 local popupMenu = require "ui.popupMenu"
 local orderedSet = require "util.orderedSet"
 local clamp = require "util.clamp"
+local guid = require "util.guid"
 
 function TODO(msg)
   error("todo: " .. msg, 1)
@@ -21,7 +22,8 @@ local prevWidth, prevHeight = love.graphics.getDimensions()
 
 local resizeMargin = 12
 
-local windows = {}
+local windows = orderedSet.new()
+local windowsById = {}
 
 local draggingWindow
 local dragX, dragY
@@ -46,17 +48,16 @@ local backgroundColor = { 0.7, 0.7, 0.7 }
 
 local tweens = flux.group()
 
-local function bringToTop(i)
-  table.insert(windows, table.remove(windows, i))
+local function bringWindowToTop(w)
+  windows:remove(w)
+  windows:add(w)
 end
 
 local function closeWindow(which)
-  for i, w in ipairs(windows) do
-    if w == which then
-      table.remove(windows, i)
-      return
-    end
+  if which.id then
+    windowsById[which.id] = nil
   end
+  windows:remove(which)
 end
 
 function AddWindow(w)
@@ -69,7 +70,10 @@ function AddWindow(w)
       :oncomplete(function()
         w.closeAnim = nil
       end)
-  table.insert(windows, w)
+  windows:add(w)
+  if w.id then
+    windowsById[w.id] = w
+  end
 end
 
 function StartClosingWindow(w)
@@ -98,15 +102,21 @@ function ClosePopupMenu()
 end
 
 local function openObjectImageEditor(object)
-  local editor = imageEditor.new(object.imageData)
-  editor.onPaint = function(data)
-    object.imageData = data
-    object.image:replacePixels(data)
+  local windowId = "image " .. object.id
+  local theWindow = windowsById[windowId]
+  if not theWindow then
+    local editor = imageEditor.new(object.imageData)
+    editor.onPaint = function(data)
+      object.imageData = data
+      object.image:replacePixels(data)
+    end
+    theWindow = editor:window(0, 0)
+    theWindow.id = windowId
+    AddWindow(theWindow)
   end
-  local theWindow = editor:window(object.x + object.width + 20, object.y)
-  theWindow.x = clamp(theWindow.x, 0, lg.getWidth() - theWindow.width)
-  theWindow.y = clamp(theWindow.y, 0, lg.getHeight() - theWindow.height)
-  AddWindow(theWindow)
+  theWindow.x = clamp(object.x + object.width + 20, 0, lg.getWidth() - theWindow.width)
+  theWindow.y = clamp(object.y, 0, lg.getHeight() - theWindow.height)
+  bringWindowToTop(theWindow)
 end
 
 love.graphics.setBackgroundColor(backgroundColor)
@@ -136,8 +146,8 @@ function love.mousemoved(x, y, dx, dy)
     selectedObject.x = selectedObject.x + dx
     selectedObject.y = selectedObject.y + dy
   else
-    for i = #windows, 1, -1 do
-      local w = windows[i]
+    for i = #windows.list, 1, -1 do
+      local w = windows.list[i]
       w.buttonOver = nil
       if w:inside(x, y) then
         if w.resizable and not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
@@ -148,7 +158,7 @@ function love.mousemoved(x, y, dx, dy)
           w.buttonOver = w:getTitleButtonOver(x, y)
         end
         for j = i - 1, 1, -1 do
-          windows[j].buttonOver = nil
+          windows.list[j].buttonOver = nil
         end
         goto anyOver
       end
@@ -169,10 +179,10 @@ function love.mousepressed(x, y, b)
       activePopup = nil
     end
   end
-  for i = #windows, 1, -1 do
-    local w = windows[i]
+  for i = #windows.list, 1, -1 do
+    local w = windows.list[i]
     if not w.closeAnim and w:inside(x, y) then
-      bringToTop(i)
+      bringWindowToTop(w)
       if y < w.y + window.titleBarHeight then
         local button = w:getTitleButtonOver(x, y)
         if button then
@@ -265,6 +275,7 @@ function love.mousereleased(x, y, b)
         y = math.min(y, drawingObjectY),
         width = math.abs(x - drawingObjectX),
         height = math.abs(y - drawingObjectY),
+        id = guid(),
       }
       new.imageData = love.image.newImageData(new.width, new.height)
       new.image = love.graphics.newImage(new.imageData)
@@ -344,8 +355,8 @@ function love.mousereleased(x, y, b)
 end
 
 function love.wheelmoved(x, y)
-  for i = #windows, 1, -1 do
-    local w = windows[i]
+  for i = #windows.list, 1, -1 do
+    local w = windows.list[i]
     if w:inside(love.mouse.getPosition()) then
       w.content:wheelmoved(x, y)
       break
@@ -354,7 +365,7 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(k)
-  local last = windows[#windows].content
+  local last = windows.list[windows.count].content
   if last.keypressed then
     last:keypressed(k)
   end
@@ -365,7 +376,7 @@ function love.update(dt)
 end
 
 function love.resize(width, height)
-  for _, w in ipairs(windows) do
+  for _, w in ipairs(windows.list) do
     if w.maximized then
       w:resize(width, height)
     else
@@ -396,7 +407,7 @@ function love.draw()
     lg.rectangle("line", drawingObjectX, drawingObjectY, love.mouse.getX() - drawingObjectX,
       love.mouse.getY() - drawingObjectY)
   end
-  for _, w in ipairs(windows) do
+  for _, w in ipairs(windows.list) do
     lg.push()
     lg.translate(w.x, w.y)
     w:draw()
