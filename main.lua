@@ -391,6 +391,7 @@ function love.draw()
   for _, obj in ipairs(objects.list) do
     lg.setColor(1, 1, 1)
     lg.draw(obj.image, obj.x, obj.y)
+    lg.setColor(1, 1, 1, obj == selectedObject and 1 or 0.3)
     lg.setLineWidth(1)
     lg.rectangle("line", obj.x, obj.y, obj.width, obj.height)
   end
