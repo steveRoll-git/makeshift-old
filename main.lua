@@ -259,18 +259,20 @@ function love.mousereleased(x, y, b)
     draggingObject = false
   elseif drawingObject and drawingObjectX then
     -- TODO input object name before adding
-    local new = {
-      x = math.min(x, drawingObjectX),
-      y = math.min(y, drawingObjectY),
-      width = math.abs(x - drawingObjectX),
-      height = math.abs(y - drawingObjectY),
-    }
-    new.imageData = love.image.newImageData(new.width, new.height)
-    new.image = love.graphics.newImage(new.imageData)
-    objects:add(new)
-    selectedObject = new
+    if drawingObjectX ~= x and drawingObjectY ~= y then
+      local new = {
+        x = math.min(x, drawingObjectX),
+        y = math.min(y, drawingObjectY),
+        width = math.abs(x - drawingObjectX),
+        height = math.abs(y - drawingObjectY),
+      }
+      new.imageData = love.image.newImageData(new.width, new.height)
+      new.image = love.graphics.newImage(new.imageData)
+      objects:add(new)
+      selectedObject = new
 
-    openObjectImageEditor(new)
+      openObjectImageEditor(new)
+    end
 
     drawingObject = false
     drawingObjectX = nil
