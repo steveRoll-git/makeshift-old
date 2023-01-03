@@ -101,6 +101,15 @@ function ClosePopupMenu()
   activePopup = nil
 end
 
+local function removeObject(object)
+  objects:remove(object)
+  selectedObject = nil
+  local windowId = "image " .. object.id
+  if windowsById[windowId] then
+    StartClosingWindow(windowsById[windowId])
+  end
+end
+
 local function openObjectImageEditor(object)
   local windowId = "image " .. object.id
   local theWindow = windowsById[windowId]
@@ -242,8 +251,7 @@ function love.mousepressed(x, y, b)
         end },
         { separator = true },
         { text = "Remove", action = function()
-          objects:remove(selectedObject)
-          selectedObject = nil
+          removeObject(selectedObject)
         end },
       }
     else
