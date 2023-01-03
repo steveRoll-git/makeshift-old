@@ -43,6 +43,7 @@ local objects = orderedSet.new()
 
 local selectedObject
 local draggingObject = false
+local objectDragX, objectDragY
 local copiedObject
 
 local backgroundColor = { 0.7, 0.7, 0.7 }
@@ -153,8 +154,8 @@ function love.mousemoved(x, y, dx, dy)
   elseif windowContentDown then
     windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
   elseif selectedObject and draggingObject and love.mouse.isDown(1) then
-    selectedObject.x = selectedObject.x + dx
-    selectedObject.y = selectedObject.y + dy
+    selectedObject.x = (x - objectDragX)
+    selectedObject.y = (y - objectDragY)
   else
     for i = #windows.list, 1, -1 do
       local w = windows.list[i]
@@ -230,6 +231,8 @@ function love.mousepressed(x, y, b)
       local obj = objects.list[i]
       if x >= obj.x and x < obj.x + obj.width and y >= obj.y and y < obj.y + obj.height then
         selectedObject = obj
+        objectDragX = x - obj.x
+        objectDragY = y - obj.y
         draggingObject = true
         break
       end
