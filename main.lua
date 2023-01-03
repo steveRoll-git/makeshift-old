@@ -408,8 +408,8 @@ function love.resize(width, height)
     if w.maximized then
       w:resize(width, height)
     else
-      w.x = (w.x / prevWidth) * width
-      w.y = (w.y / prevHeight) * height
+      w.x = ((w.x + w.width / 2) / prevWidth) * width - w.width / 2
+      w.y = ((w.y + w.height / 2) / prevHeight) * height - w.height / 2
     end
   end
   prevWidth, prevHeight = width, height
