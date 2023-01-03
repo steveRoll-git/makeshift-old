@@ -10,7 +10,7 @@ local separatorMargin = 5
 local popupMenu = {}
 popupMenu.__index = popupMenu
 
--- `items` is a list of {text = string, action = function} or {separator = true}
+-- `items` is a list of {text = string, action = function, enabled = function} or {separator = true}
 function popupMenu.new(items, x, y, width)
   local self = setmetatable({}, popupMenu)
   self:init(items, x, y, width)
@@ -26,16 +26,22 @@ function popupMenu:init(items, x, y, width)
   local buttonY = 0
   for i, item in ipairs(items) do
     if item.separator then
-      table.insert(self.separators, {y = buttonY + separatorMargin})
+      table.insert(self.separators, { y = buttonY + separatorMargin })
       buttonY = buttonY + separatorMargin * 2
     else
       local function onClick()
         ClosePopupMenu()
         if item.action then item.action() end
       end
+
       local new = button.new(0, buttonY, width, itemHeight, item.text, onClick)
       new.textAlign = "left"
       new.outline = false
+      if item.enabled == false then
+        new.enabled = false
+      elseif type(item.enabled) == "function" then
+        new.enabled = item.enabled()
+      end
       table.insert(self.buttons, new)
       buttonY = buttonY + new.height
     end

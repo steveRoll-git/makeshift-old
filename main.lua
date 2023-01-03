@@ -43,6 +43,7 @@ local objects = orderedSet.new()
 
 local selectedObject
 local draggingObject = false
+local copiedObject
 
 local backgroundColor = { 0.7, 0.7, 0.7 }
 
@@ -250,6 +251,10 @@ function love.mousepressed(x, y, b)
           objects:insertAt(1, selectedObject)
         end },
         { separator = true },
+        { text = "Copy", action = function()
+          copiedObject = selectedObject
+        end },
+        { separator = true },
         { text = "Remove", action = function()
           removeObject(selectedObject)
         end },
@@ -259,6 +264,18 @@ function love.mousepressed(x, y, b)
         { text = "New object", action = function()
           drawingObject = true
           love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
+        end },
+        { text = "Paste", enabled = copiedObject ~= nil, action = function()
+          local new = {
+            x = x,
+            y = y,
+            width = copiedObject.width,
+            height = copiedObject.height,
+            imageData = copiedObject.imageData:clone(),
+            id = guid()
+          }
+          new.image = lg.newImage(new.imageData)
+          objects:add(new)
         end },
         { separator = true },
         { text = "Background color", action = function()

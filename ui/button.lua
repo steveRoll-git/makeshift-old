@@ -22,6 +22,7 @@ function button:init(x, y, width, height, text, onClick)
   self.height = height
   self.text = text
   self.onClick = onClick
+  self.enabled = true
 end
 
 function button:inside(x, y)
@@ -41,7 +42,7 @@ end
 function button:mousereleased(x, y, b)
   if b == 1 then
     if self.down and self:inside(x, y) then
-      if self.onClick then self.onClick() end
+      if self.enabled and self.onClick then self.onClick() end
     end
     self.down = false
   end
@@ -55,15 +56,16 @@ function button:draw()
     lg.setColor(1, 1, 1)
     lg.rectangle("line", 0, 0, self.width, self.height, 4)
   end
-  if self.down then
+  if self.down and self.enabled then
     lg.setColor(1, 1, 1, 0.4)
     lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)
   elseif self.over then
-    lg.setColor(1, 1, 1, 0.2)
+    lg.setColor(1, 1, 1, self.enabled and 0.2 or 0.1)
     lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)
   end
   lg.setFont(font)
-  lg.setColor(1, 1, 1)
+  local c = self.enabled and 1 or 0.4
+  lg.setColor(c, c, c, 1)
   lg.printf(self.text, button.cornerSize, self.height / 2 - font:getHeight() / 2, self.width - button.cornerSize * 2,
     self.textAlign or "center")
   lg.pop()
