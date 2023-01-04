@@ -60,6 +60,9 @@ local function closeWindow(which)
     windowsById[which.id] = nil
   end
   windows:remove(which)
+  if which.content.close then
+    which.content:close()
+  end
 end
 
 function AddWindow(w)
@@ -242,6 +245,17 @@ function love.mousepressed(x, y, b)
     if selectedObject then
       OpenPopupMenu {
         { text = "Paint", action = function()
+          if selectedObject.copiedImage then
+            selectedObject.copiedImage = false
+            selectedObject.imageData = selectedObject.imageData:clone()
+            selectedObject.image = lg.newImage(selectedObject.imageData)
+          end
+          -- copiedObject points to to the original object's imageData
+          -- until it's edited, in which case a copy is made
+          if copiedObject and selectedObject.imageData == copiedObject.imageData then
+            selectedObject.imageData = selectedObject.imageData:clone()
+            selectedObject.image = lg.newImage(selectedObject.imageData)
+          end
           openObjectImageEditor(selectedObject)
         end },
         { separator = true },
@@ -255,7 +269,12 @@ function love.mousepressed(x, y, b)
         end },
         { separator = true },
         { text = "Copy", action = function()
-          copiedObject = selectedObject
+          copiedObject = {
+            width = selectedObject.width,
+            height = selectedObject.height,
+            imageData = selectedObject.imageData,
+            image = selectedObject.image
+          }
         end },
         { separator = true },
         { text = "Remove", action = function()
@@ -274,10 +293,11 @@ function love.mousepressed(x, y, b)
             y = y,
             width = copiedObject.width,
             height = copiedObject.height,
-            imageData = copiedObject.imageData:clone(),
+            imageData = copiedObject.imageData,
+            copiedImage = true,
             id = guid()
           }
-          new.image = lg.newImage(new.imageData)
+          new.image = copiedObject.image
           objects:add(new)
         end },
         { separator = true },

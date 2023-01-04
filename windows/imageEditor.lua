@@ -385,6 +385,10 @@ function imageEditor:resize(w, h, prevW, prevH)
   end
 end
 
+function imageEditor:close()
+  self.undoData:release()
+end
+
 function imageEditor:draw()
   lg.push()
   lg.translate(math.floor(self.transX), math.floor(self.transY))
