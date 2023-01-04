@@ -85,35 +85,7 @@ function imageEditor.new(imageWidth, imageHeight)
       onClick = function(tool, x, y)
         if not self:inRange(x, y) then return end
 
-        local ir, ig, ib, ia = self.imageData:getPixel(x, y)
-        if compareColors(ir, ig, ib, ia, unpack(self.paletteColors[self.selectedColor])) then
-          return
-        end
-
-        if self.clean then
-          self.imageData:mapPixel(function() return unpack(self.paletteColors[self.selectedColor]) end)
-          return
-        end
-
-        self.clean = false
-        local queue = { [posHash(x, y)] = true }
-        while next(queue) do
-          local pos = next(queue)
-          queue[next(queue)] = nil
-          local x, y = pos:match("(%d+),(%d+)")
-          x, y = tonumber(x), tonumber(y)
-          self.imageData:setPixel(x, y, self.paletteColors[self.selectedColor])
-          for _, dir in ipairs(fillOffsets) do
-            local x1, y1 = x + dir[1], y + dir[2]
-            if self:inRange(x1, y1) then
-              local r, g, b, a = self.imageData:getPixel(x1, y1)
-              if compareColors(ir, ig, ib, ia, self.imageData:getPixel(x1, y1)) and
-                  not compareColors(r, g, b, a, unpack(self.paletteColors[self.selectedColor])) then
-                queue[posHash(x1, y1)] = true
-              end
-            end
-          end
-        end
+        self:floodFill(x, y, self.paletteColors[self.selectedColor])
       end
     },
     {
@@ -241,6 +213,52 @@ function imageEditor:paintCircle(toX, toY, fromX, fromY, color)
   self.clean = false
 end
 
+-- Scanline flood fill algorithm, adapted from:
+-- https://lodev.org/cgtutor/floodfill.html
+function imageEditor:floodFill(origX, origY, newColor)
+  local oldColor = {self.imageData:getPixel(origX, origY)}
+
+  if compareColors(oldColor, newColor) then
+    return
+  end
+
+  local stack = {}
+  table.insert(stack, origX)
+  table.insert(stack, origY)
+
+  while #stack > 0 do
+    local y = table.remove(stack)
+    local x = table.remove(stack)
+    local spanAbove = false
+    local spanBelow = false
+    local x1 = x
+    while x1 >= 0 and compareColors(oldColor, self.imageData:getPixel(x1, y)) do
+      x1 = x1 - 1
+    end
+    x1 = x1 + 1
+    while x1 < self.imageData:getWidth() and compareColors(oldColor, self.imageData:getPixel(x1, y)) do
+      self.imageData:setPixel(x1, y, newColor)
+      if not spanAbove and y > 0 and compareColors(oldColor, self.imageData:getPixel(x1, y - 1)) then
+        table.insert(stack, x1)
+        table.insert(stack, y - 1)
+        spanAbove = true
+      elseif spanAbove and y > 0 and not compareColors(oldColor, self.imageData:getPixel(x1, y - 1)) then
+        spanAbove = false
+      end
+      if not spanBelow and y < self.imageData:getHeight() - 1 and
+          compareColors(oldColor, self.imageData:getPixel(x1, y + 1)) then
+        table.insert(stack, x1)
+        table.insert(stack, y + 1)
+        spanBelow = true
+      elseif spanBelow and y < self.imageData:getHeight() - 1 and
+          not compareColors(oldColor, self.imageData:getPixel(x1, y + 1)) then
+        spanBelow = false
+      end
+      x1 = x1 + 1
+    end
+  end
+end
+
 function imageEditor:mouseOnPaletteResize(x)
   return x >= self.palettePanelWidth and x <= self.palettePanelWidth + 5
 end
@@ -358,7 +376,8 @@ end
 
 function imageEditor:resize(w, h, prevW, prevH)
   if not self.transX then
-    self.transX = self.palettePanelWidth + (w - self.palettePanelWidth - self.toolbarWidth) / 2 - self.imageData:getWidth() / 2
+    self.transX = self.palettePanelWidth + (w - self.palettePanelWidth - self.toolbarWidth) / 2 -
+        self.imageData:getWidth() / 2
     self.transY = h / 2 - self.imageData:getHeight() / 2
   else
     self.transX = self.transX - (prevW - w) / 2
