@@ -1,3 +1,5 @@
+io.output():setvbuf("no")
+
 local love = love
 local lg = love.graphics
 
@@ -48,7 +50,20 @@ local copiedObject
 
 local backgroundColor = { 0.7, 0.7, 0.7 }
 
+local cameraX, cameraY = 0, 0
+local panning = false
+
+local gridSize = 100
+
 local tweens = flux.group()
+
+local function screenToWorld(x, y)
+  return x + cameraX, y + cameraY
+end
+
+local function worldToScreen(x, y)
+  return x - cameraX, y - cameraY
+end
 
 local function bringWindowToTop(w)
   windows:remove(w)
@@ -128,18 +143,23 @@ local function openObjectImageEditor(object)
     theWindow.id = windowId
     AddWindow(theWindow)
   end
-  theWindow.x = clamp(object.x + object.width + 20, 0, lg.getWidth() - theWindow.width)
-  theWindow.y = clamp(object.y, 0, lg.getHeight() - theWindow.height)
+  local screenX, screenY = worldToScreen(object.x, object.y)
+  theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
+  theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
   bringWindowToTop(theWindow)
 end
 
 love.graphics.setBackgroundColor(backgroundColor)
 
 function love.mousemoved(x, y, dx, dy)
+  local worldX, worldY = screenToWorld(x, y)
   if not love.mouse.isDown(1) then
     love.mouse.setCursor()
   end
-  if activePopup then
+  if panning then
+    cameraX = cameraX - dx
+    cameraY = cameraY - dy
+  elseif activePopup then
     activePopup:mousemoved(x, y, dx, dy)
   elseif draggingWindow then
     if draggingWindow.maximized then
@@ -157,8 +177,8 @@ function love.mousemoved(x, y, dx, dy)
   elseif windowContentDown then
     windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
   elseif selectedObject and draggingObject and love.mouse.isDown(1) then
-    selectedObject.x = (x - objectDragX)
-    selectedObject.y = (y - objectDragY)
+    selectedObject.x = (worldX - objectDragX)
+    selectedObject.y = (worldY - objectDragY)
   else
     for i = #windows.list, 1, -1 do
       local w = windows.list[i]
@@ -185,6 +205,7 @@ function love.mousemoved(x, y, dx, dy)
 end
 
 function love.mousepressed(x, y, b)
+  local worldX, worldY = screenToWorld(x, y)
   if activePopup then
     if activePopup:inside(x, y) then
       activePopup:mousepressed(x, y, b)
@@ -198,14 +219,16 @@ function love.mousepressed(x, y, b)
     if not w.closeAnim and w:inside(x, y) then
       bringWindowToTop(w)
       if y < w.y + window.titleBarHeight then
-        local button = w:getTitleButtonOver(x, y)
-        if button then
-          w.buttonDown = button
-          windowControlButtonDown = w
-        else
-          draggingWindow = w
-          dragX = x - w.x
-          dragY = y - w.y
+        if b == 1 then
+          local button = w:getTitleButtonOver(x, y)
+          if button then
+            w.buttonDown = button
+            windowControlButtonDown = w
+          else
+            draggingWindow = w
+            dragX = x - w.x
+            dragY = y - w.y
+          end
         end
       else
         local right = w.x + w.width
@@ -224,19 +247,20 @@ function love.mousepressed(x, y, b)
     end
   end
   if b == 1 and drawingObject then
-    -- TODO adjust for camera position
-    drawingObjectX, drawingObjectY = x, y
+    drawingObjectX, drawingObjectY = worldX, worldY
     return
   end
   if b == 1 or b == 2 then
     selectedObject = nil
     for i = #objects.list, 1, -1 do
       local obj = objects.list[i]
-      if x >= obj.x and x < obj.x + obj.width and y >= obj.y and y < obj.y + obj.height then
+      if worldX >= obj.x and worldX < obj.x + obj.width and worldY >= obj.y and worldY < obj.y + obj.height then
         selectedObject = obj
-        objectDragX = x - obj.x
-        objectDragY = y - obj.y
-        draggingObject = true
+        if b == 1 then
+          objectDragX = worldX - obj.x
+          objectDragY = worldY - obj.y
+          draggingObject = true
+        end
         break
       end
     end
@@ -289,8 +313,8 @@ function love.mousepressed(x, y, b)
         end },
         { text = "Paste", enabled = copiedObject ~= nil, action = function()
           local new = {
-            x = x,
-            y = y,
+            x = worldX,
+            y = worldY,
             width = copiedObject.width,
             height = copiedObject.height,
             imageData = copiedObject.imageData,
@@ -309,20 +333,27 @@ function love.mousepressed(x, y, b)
         end }
       }
     end
+    return
+  end
+  if b == 3 then
+    panning = true
   end
 end
 
 function love.mousereleased(x, y, b)
-  if draggingObject then
+  local worldX, worldY = screenToWorld(x, y)
+  if b == 3 and panning then
+    panning = false
+  elseif b == 1 and draggingObject then
     draggingObject = false
-  elseif drawingObject and drawingObjectX then
+  elseif b == 1 and drawingObject and drawingObjectX then
     -- TODO input object name before adding
-    if drawingObjectX ~= x and drawingObjectY ~= y then
+    if drawingObjectX ~= worldX and drawingObjectY ~= worldY then
       local new = {
-        x = math.min(x, drawingObjectX),
-        y = math.min(y, drawingObjectY),
-        width = math.abs(x - drawingObjectX),
-        height = math.abs(y - drawingObjectY),
+        x = math.min(worldX, drawingObjectX),
+        y = math.min(worldY, drawingObjectY),
+        width = math.abs(worldX - drawingObjectX),
+        height = math.abs(worldY - drawingObjectY),
         id = guid(),
       }
       new.imageData = love.image.newImageData(new.width, new.height)
@@ -339,7 +370,7 @@ function love.mousereleased(x, y, b)
     love.mouse.setCursor()
   elseif activePopup then
     activePopup:mousereleased(x, y, b)
-  elseif windowControlButtonDown then
+  elseif b == 1 and windowControlButtonDown then
     if windowControlButtonDown:getTitleButtonOver(x, y) == windowControlButtonDown.buttonDown then
       local theWindow = windowControlButtonDown
       local action = theWindow.buttons[theWindow.buttonDown].action
@@ -392,9 +423,9 @@ function love.mousereleased(x, y, b)
     windowControlButtonDown = nil
     return
   end
-  if draggingWindow then
+  if b == 1 and draggingWindow then
     draggingWindow = nil
-  elseif resizingWindow then
+  elseif b == 1 and resizingWindow then
     resizingWindow = nil
   elseif windowContentDown then
     windowContentDown.content:mousereleased(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, b)
@@ -432,10 +463,27 @@ function love.resize(width, height)
       w.y = ((w.y + w.height / 2) / prevHeight) * height - w.height / 2
     end
   end
+  cameraX = (cameraX + prevWidth / 2) - width / 2
+  cameraY = (cameraY + prevHeight / 2) - height / 2
   prevWidth, prevHeight = width, height
 end
 
 function love.draw()
+  local mouseWorldX, mouseWorldY = screenToWorld(love.mouse.getPosition())
+
+  lg.push()
+  lg.translate(-cameraX, -cameraY)
+
+  lg.setColor(1, 1, 1, 0.3)
+  for x = math.floor(cameraX / gridSize) * gridSize, cameraX + lg.getWidth(), gridSize do
+    lg.setLineWidth(x == 0 and 4 or 1)
+    lg.line(x, cameraY, x, cameraY + lg.getHeight())
+  end
+  for y = math.floor(cameraY / gridSize) * gridSize, cameraY + lg.getHeight(), gridSize do
+    lg.setLineWidth(y == 0 and 4 or 1)
+    lg.line(cameraX, y, cameraX + lg.getWidth(), y)
+  end
+
   for _, obj in ipairs(objects.list) do
     lg.setColor(1, 1, 1)
     lg.draw(obj.image, obj.x, obj.y)
@@ -443,19 +491,23 @@ function love.draw()
     lg.setLineWidth(1)
     lg.rectangle("line", obj.x, obj.y, obj.width, obj.height)
   end
+
   if selectedObject then
     lg.setColor(1, 1, 1)
     lg.setLineWidth(1)
-    lg.rectangle("line", selectedObject.x - 5, selectedObject.y - 5, selectedObject.width + 10,
-      selectedObject.height + 10)
+    lg.rectangle("line", selectedObject.x - 4, selectedObject.y - 4, selectedObject.width + 8,
+      selectedObject.height + 8)
   end
+
   if drawingObject and drawingObjectX then
     lg.setColor(1, 1, 1)
     lg.setLineWidth(1)
-    -- TODO adjust for camera position
-    lg.rectangle("line", drawingObjectX, drawingObjectY, love.mouse.getX() - drawingObjectX,
-      love.mouse.getY() - drawingObjectY)
+    lg.rectangle("line", drawingObjectX, drawingObjectY, mouseWorldX - drawingObjectX,
+      mouseWorldY - drawingObjectY)
   end
+
+  lg.pop()
+
   for _, w in ipairs(windows.list) do
     lg.push()
     lg.translate(w.x, w.y)
