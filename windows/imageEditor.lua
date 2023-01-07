@@ -279,9 +279,7 @@ function imageEditor:mousemoved(x, y, dx, dy)
     self.paletteColumns = math.floor(self.palettePanelWidth / self.paletteSquareSize)
   else
     if self:mouseOnPaletteResize(x) then
-      love.mouse.setCursor(love.mouse.getSystemCursor("sizewe"))
-    else
-      love.mouse.setCursor()
+      SetCursor(love.mouse.getSystemCursor("sizewe"))
     end
   end
 

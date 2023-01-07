@@ -60,6 +60,8 @@ local gridSize = 100
 
 local stencilLevel = 0
 
+local nextCursor
+
 local tweens = flux.group()
 
 local function screenToWorld(x, y)
@@ -141,6 +143,10 @@ function ClosePopupMenu()
   activePopup = nil
 end
 
+function SetCursor(cursor)
+  nextCursor = cursor
+end
+
 local function removeObject(object)
   objects:remove(object)
   selectedObject = nil
@@ -193,7 +199,7 @@ love.graphics.setBackgroundColor(backgroundColor)
 function love.mousemoved(x, y, dx, dy)
   local worldX, worldY = screenToWorld(x, y)
   if not love.mouse.isDown(1) then
-    love.mouse.setCursor()
+    nextCursor = nil
   end
   if panning then
     cameraX = cameraX - dx
@@ -224,7 +230,7 @@ function love.mousemoved(x, y, dx, dy)
       w.buttonOver = nil
       if w:inside(x, y) then
         if w.resizable and not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
-          love.mouse.setCursor(love.mouse.getSystemCursor("sizenwse"))
+          SetCursor(love.mouse.getSystemCursor("sizenwse"))
         elseif y > w.y + window.titleBarHeight then
           w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
         else
@@ -237,10 +243,11 @@ function love.mousemoved(x, y, dx, dy)
       end
     end
     if drawingObject then
-      love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
+      SetCursor(love.mouse.getSystemCursor("crosshair"))
     end
     ::anyOver::
   end
+  love.mouse.setCursor(nextCursor)
 end
 
 function love.mousepressed(x, y, b)

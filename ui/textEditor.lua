@@ -451,7 +451,7 @@ function editor:onDown(x, y, b)
       self.lastClickTime = love.timer.getTime()
       self:flick()
     end
-    love.mouse.setCursor(love.mouse.getSystemCursor("ibeam"))
+    SetCursor(love.mouse.getSystemCursor("ibeam"))
   end
 end
 
@@ -465,11 +465,7 @@ function editor:onMove(x, y)
       self.maxSelection = self.cursor < self.selectStart and self.selectStart or self.cursor
     end
   end
-  love.mouse.setCursor(love.mouse.getSystemCursor("ibeam"))
-end
-
-function editor:onOut()
-  love.mouse.setCursor()
+  SetCursor(love.mouse.getSystemCursor("ibeam"))
 end
 
 function editor:onFocus()
@@ -478,12 +474,6 @@ end
 
 function editor:onLoseFocus()
   --self.selecting = false
-end
-
-function editor:onRelease()
-  if not self.over then
-    love.mouse.setCursor()
-  end
 end
 
 function editor:onRightClick()
