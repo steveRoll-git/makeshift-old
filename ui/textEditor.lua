@@ -8,6 +8,7 @@ local math = math
 local baseButton   = require "ui.baseButton"
 local syntaxColors = require "ui.syntaxColors"
 local clamp        = require "util.clamp"
+local split        = require "util.split"
 
 local cursor_mt = {
   __lt = function(a, b)
@@ -29,11 +30,19 @@ editor.__index = editor
 editor.textPadding = defaultTextPadding
 editor.doubleClickTime = 0.5
 
-function editor.new(x, y, w, h, font, multiline)
+function editor.new(x, y, w, h, font, multiline, text)
   font = font or lg.getFont()
   local obj = setmetatable(baseButton.new(x, y, w, h), editor)
   obj.font = font
-  obj.lines = { { string = "", text = lg.newText(font), totalWidth = 0 } }
+  if text then
+    obj.lines = {}
+    for l in split(text, "\n") do
+      table.insert(obj.lines, { string = l, text = lg.newText(font) })
+      obj:updateLine(#obj.lines)
+    end
+  else
+    obj.lines = { { string = "", text = lg.newText(font), totalWidth = 0 } }
+  end
   obj.cursor = setmetatable({ line = 1, col = 1, lastCol = 1 }, cursor_mt)
   obj.selectStart = setmetatable({ line = 1, col = 1 }, cursor_mt)
   obj.selecting = false

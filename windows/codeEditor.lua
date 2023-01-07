@@ -11,15 +11,16 @@ local font = love.graphics.newFont("fonts/source-code-pro.regular.ttf", 16)
 local codeEditor = {}
 codeEditor.__index = codeEditor
 
-function codeEditor.new(text)
+function codeEditor.new(targetObject)
   local self = setmetatable({}, codeEditor)
-  self:init(text)
+  self:init(targetObject)
   return self
 end
 
-function codeEditor:init(text)
-  self.text = text
-  self.editor = textEditor.new(0, 0, 100, 100, font, true)
+function codeEditor:init(targetObject)
+  self.targetObject = targetObject
+  self.text = targetObject.code or ""
+  self.editor = textEditor.new(0, 0, 100, 100, font, true, self.text)
   self.scrollbarY = scrollbar.new("y", function()
     self.editor.textY = textEditor.textPadding -
         self.scrollbarY.scrollY / (self.scrollbarY.height - self.scrollbarY.scrollHeight) *
@@ -142,6 +143,10 @@ end
 function codeEditor:textinput(t)
   self.editor:textinput(t)
   self:updateScrollbars()
+end
+
+function codeEditor:close()
+  self.targetObject.code = self.editor:getString()
 end
 
 function codeEditor:draw()

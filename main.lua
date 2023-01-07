@@ -179,7 +179,7 @@ local function openObjectCodeEditor(object)
   local windowId = "code " .. object.id
   local theWindow = windowsById[windowId]
   if not theWindow then
-    local editor = codeEditor.new(object.imageData)
+    local editor = codeEditor.new(object)
     editor.onPaint = function(data)
       object.imageData = data
       object.image:replacePixels(data)
