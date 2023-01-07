@@ -3,11 +3,14 @@ io.output():setvbuf("no")
 local love = love
 local lg = love.graphics
 
+love.keyboard.setKeyRepeat(true)
+
 FontName = "fonts/PT Root UI_Regular.ttf"
 
 local flux = require "lib.flux"
 local imageEditor = require "windows.imageEditor"
 local colorPicker = require "windows.colorPicker"
+local codeEditor = require "windows.codeEditor"
 local window = require "ui.window"
 local popupMenu = require "ui.popupMenu"
 local orderedSet = require "util.orderedSet"
@@ -55,6 +58,8 @@ local panning = false
 
 local gridSize = 100
 
+local stencilLevel = 0
+
 local tweens = flux.group()
 
 local function screenToWorld(x, y)
@@ -63,6 +68,21 @@ end
 
 local function worldToScreen(x, y)
   return x - cameraX, y - cameraY
+end
+
+function PushStencil(func)
+  stencilLevel = stencilLevel + 1
+  lg.stencil(func, "increment", 1, true)
+  lg.setStencilTest("equal", stencilLevel)
+end
+
+function PopStencil(func)
+  lg.stencil(func, "decrement", 1, true)
+  lg.setStencilTest("equal", stencilLevel)
+  stencilLevel = stencilLevel - 1
+  if stencilLevel == 0 then
+    lg.setStencilTest()
+  end
 end
 
 local function bringWindowToTop(w)
@@ -135,6 +155,25 @@ local function openObjectImageEditor(object)
   local theWindow = windowsById[windowId]
   if not theWindow then
     local editor = imageEditor.new(object.imageData)
+    editor.onPaint = function(data)
+      object.imageData = data
+      object.image:replacePixels(data)
+    end
+    theWindow = editor:window(0, 0)
+    theWindow.id = windowId
+    AddWindow(theWindow)
+  end
+  local screenX, screenY = worldToScreen(object.x, object.y)
+  theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
+  theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
+  bringWindowToTop(theWindow)
+end
+
+local function openObjectCodeEditor(object)
+  local windowId = "code " .. object.id
+  local theWindow = windowsById[windowId]
+  if not theWindow then
+    local editor = codeEditor.new(object.imageData)
     editor.onPaint = function(data)
       object.imageData = data
       object.image:replacePixels(data)
@@ -281,6 +320,9 @@ function love.mousepressed(x, y, b)
             selectedObject.image = lg.newImage(selectedObject.imageData)
           end
           openObjectImageEditor(selectedObject)
+        end },
+        { text = "Code", action = function()
+          openObjectCodeEditor(selectedObject)
         end },
         { separator = true },
         { text = "Bring to top", action = function()
@@ -436,7 +478,7 @@ end
 function love.wheelmoved(x, y)
   for i = #windows.list, 1, -1 do
     local w = windows.list[i]
-    if w:inside(love.mouse.getPosition()) then
+    if w.content.wheelmoved and w:inside(love.mouse.getPosition()) then
       w.content:wheelmoved(x, y)
       break
     end
@@ -444,9 +486,16 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(k)
-  local last = windows.list[windows.count].content
-  if last.keypressed then
-    last:keypressed(k)
+  local last = windows:last()
+  if last and last.content.keypressed then
+    last.content:keypressed(k)
+  end
+end
+
+function love.textinput(t)
+  local last = windows:last()
+  if last and last.content.textinput then
+    last.content:textinput(t)
   end
 end
 

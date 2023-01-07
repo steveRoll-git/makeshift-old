@@ -52,8 +52,8 @@ function window:init(content, title, width, height, x, y)
   self.stencilWhole = function()
     lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
   end
-  self.stencilTitle = function()
-    lg.rectangle("fill", 0, 0, self.width, titleBarHeight)
+  self.stencilContent = function ()
+    lg.rectangle("fill", 0, titleBarHeight, self.width, self.height - titleBarHeight)
   end
 end
 
@@ -105,8 +105,7 @@ function window:draw()
   lg.setColor(1, 1, 1, outlineColor)
   lg.rectangle("line", 0, 0, self.width, self.height, self:cornerSize())
 
-  lg.stencil(self.stencilWhole, "replace", 1)
-  lg.setStencilTest("greater", 0)
+  PushStencil(self.stencilWhole)
 
   lg.push()
   lg.translate(self.width - titleBarHeight, 0)
@@ -132,10 +131,13 @@ function window:draw()
   lg.print(self.title, math.floor(cornerSize / 2))
 
   lg.push()
-  lg.stencil(self.stencilTitle, "decrement", 1, true)
+  PushStencil(self.stencilContent)
   lg.translate(0, titleBarHeight)
   self.content:draw()
   lg.pop()
+  PopStencil(self.stencilContent)
+  
+  PopStencil(self.stencilWhole)
 
   if self.resizable and not self.maximized then
     lg.setColor(1, 1, 1, outlineColor)
@@ -144,7 +146,6 @@ function window:draw()
     lg.line(self.width - cornerSize - 6, self.height, self.width, self.height - cornerSize - 6)
   end
 
-  lg.setStencilTest()
 end
 
 return window

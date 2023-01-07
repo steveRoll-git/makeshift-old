@@ -45,4 +45,8 @@ function orderedSet:remove(item)
   self.count = self.count - 1
 end
 
+function orderedSet:last()
+  return self.list[self.count]
+end
+
 return orderedSet
