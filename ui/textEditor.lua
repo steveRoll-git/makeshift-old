@@ -26,6 +26,7 @@ local cursorWidth = 2
 local editor = setmetatable({}, baseButton)
 editor.__index = editor
 
+editor.textPadding = defaultTextPadding
 editor.doubleClickTime = 0.5
 
 function editor.new(x, y, w, h, font, multiline)
@@ -465,7 +466,9 @@ function editor:onMove(x, y)
       self.maxSelection = self.cursor < self.selectStart and self.selectStart or self.cursor
     end
   end
-  SetCursor(love.mouse.getSystemCursor("ibeam"))
+  if self.over then
+    SetCursor(love.mouse.getSystemCursor("ibeam"))
+  end
 end
 
 function editor:onFocus()
@@ -549,11 +552,9 @@ end
 function editor:draw()
   lg.push("all")
   lg.translate(self.x, self.y)
-  --PushStencil(self.stencilFunc)
+  PushStencil(self.stencilFunc)
 
-  lg.setColor(0, 0, 0, 0.8)
-  lg.rectangle("fill", 0, 0, self.w, self.h)
-
+  lg.push()
   lg.translate(self.textX, self.textY)
 
   for i, l in ipairs(self.lines) do
@@ -587,7 +588,8 @@ function editor:draw()
   end
 
   lg.setStencilTest()
-  --PopStencil(self.stencilFunc)
+  lg.pop()
+  PopStencil(self.stencilFunc)
   lg.pop()
 end
 
