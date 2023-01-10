@@ -241,9 +241,11 @@ function editor:textinput(t)
 end
 
 function editor:newLine()
-  local newS = self:curLine():sub(self.cursor.col)
+  local orig = self:curLine()
+  local indent = orig:match("^(%s*)")
+  local newS = orig:sub(self.cursor.col)
   local line = {
-    string = newS,
+    string = indent .. newS,
     text = lg.newText(self.font, newS)
   }
   table.insert(self.lines, self.cursor.line + 1, line)
@@ -251,7 +253,7 @@ function editor:newLine()
   self:updateLine()
   self.cursor.line = self.cursor.line + 1
   self:updateLine()
-  self.cursor.col = 1
+  self.cursor.col = #indent + 1
   self.cursor.lastCol = self.cursor.col
 end
 
