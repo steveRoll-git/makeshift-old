@@ -52,7 +52,7 @@ function window:init(content, title, width, height, x, y)
   self.stencilWhole = function()
     lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
   end
-  self.stencilContent = function ()
+  self.stencilContent = function()
     lg.rectangle("fill", 0, titleBarHeight, self.width, self.height - titleBarHeight)
   end
 end
@@ -74,6 +74,13 @@ function window:getTitleButtonOver(x, y)
       return i
     end
   end
+end
+
+function window:openModalChild(w)
+  self.modalChild = w
+  w.modalParent = self
+  self.modalOverlayAlpha = 0
+  AddTween(self, 0.1, { modalOverlayAlpha = 0.6 })
 end
 
 function window:resize(w, h)
@@ -135,8 +142,12 @@ function window:draw()
   lg.translate(0, titleBarHeight)
   self.content:draw()
   lg.pop()
+  if self.modalChild then
+    lg.setColor(0, 0, 0, self.modalOverlayAlpha)
+    self.stencilContent()
+  end
   PopStencil(self.stencilContent)
-  
+
   PopStencil(self.stencilWhole)
 
   if self.resizable and not self.maximized then

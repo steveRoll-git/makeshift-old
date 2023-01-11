@@ -90,6 +90,9 @@ end
 local function bringWindowToTop(w)
   windows:remove(w)
   windows:add(w)
+  if w.modalChild then
+    bringWindowToTop(w.modalChild)
+  end
 end
 
 local function closeWindow(which)
@@ -99,6 +102,9 @@ local function closeWindow(which)
   windows:remove(which)
   if which.content.close then
     which.content:close()
+  end
+  if which.modalParent then
+    which.modalParent.modalChild = nil
   end
 end
 
@@ -128,6 +134,9 @@ function StartClosingWindow(w)
       :oncomplete(function()
         closeWindow(w)
       end)
+  if w.modalParent then
+    tweens:to(w.modalParent, 0.1, { modalOverlayAlpha = 0 })
+  end
 end
 
 function OpenPopupMenu(items, x, y)
@@ -145,6 +154,10 @@ end
 
 function SetCursor(cursor)
   nextCursor = cursor
+end
+
+function AddTween(object, duration, keys)
+  return tweens:to(object, duration, keys)
 end
 
 local function removeObject(object)
@@ -231,7 +244,7 @@ function love.mousemoved(x, y, dx, dy)
       if w:inside(x, y) then
         if w.resizable and not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
           SetCursor(love.mouse.getSystemCursor("sizenwse"))
-        elseif y > w.y + window.titleBarHeight then
+        elseif y > w.y + window.titleBarHeight and not w.modalChild then
           w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
         else
           w.buttonOver = w:getTitleButtonOver(x, y)
@@ -284,7 +297,7 @@ function love.mousepressed(x, y, b)
           resizingWindow = w
           resizeX = x - w.width
           resizeY = y - w.height
-        else
+        elseif not w.modalChild then
           w.content:mousepressed(x - w.x, y - w.y - window.titleBarHeight, b)
           windowContentDown = w
         end
@@ -485,7 +498,7 @@ end
 function love.wheelmoved(x, y)
   for i = #windows.list, 1, -1 do
     local w = windows.list[i]
-    if w.content.wheelmoved and w:inside(love.mouse.getPosition()) then
+    if not w.modalChild and w.content.wheelmoved and w:inside(love.mouse.getPosition()) then
       w.content:wheelmoved(x, y)
       break
     end
@@ -494,14 +507,14 @@ end
 
 function love.keypressed(k)
   local last = windows:last()
-  if last and last.content.keypressed then
+  if last and last.content.keypressed and not last.modalChild then
     last.content:keypressed(k)
   end
 end
 
 function love.textinput(t)
   local last = windows:last()
-  if last and last.content.textinput then
+  if last and last.content.textinput and not last.modalChild then
     last.content:textinput(t)
   end
 end

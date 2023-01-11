@@ -295,7 +295,9 @@ function imageEditor:mousepressed(x, y, b)
         table.insert(self.paletteColors, color)
         self.selectedColor = #self.paletteColors
       end)
-      AddWindow(picker:window(self.window.x + 50, self.window.y + 50, "Add Color to Palette"))
+      local thePicker = picker:window(self.window.x + 50, self.window.y + 50, "Add Color to Palette")
+      AddWindow(thePicker)
+      self.window:openModalChild(thePicker)
     elseif index >= 1 and index <= #self.paletteColors then
       if b == 1 then
         self.selectedColor = index
