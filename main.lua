@@ -160,13 +160,17 @@ function AddTween(object, duration, keys)
   return tweens:to(object, duration, keys)
 end
 
-local function removeObject(object)
-  objects:remove(object)
-  selectedObject = nil
-  local windowId = "image " .. object.id
+local function closeIfExists(windowId)
   if windowsById[windowId] then
     StartClosingWindow(windowsById[windowId])
   end
+end
+
+local function removeObject(object)
+  objects:remove(object)
+  selectedObject = nil
+  closeIfExists("image " .. object.id)
+  closeIfExists("code " .. object.id)
 end
 
 local function openObjectImageEditor(object)
