@@ -9,28 +9,19 @@ local colors = {
 
 local data = {
   words = {
-    ["end"] = colors.keyword,
     ["if"] = colors.keyword,
-    ["then"] = colors.keyword,
     ["else"] = colors.keyword,
-    ["elseif"] = colors.keyword,
     ["while"] = colors.keyword,
     ["for"] = colors.keyword,
     ["in"] = colors.keyword,
-    ["do"] = colors.keyword,
-    ["repeat"] = colors.keyword,
-    ["until"] = colors.keyword,
 
-    ["local"] = colors.keyword,
+    ["var"] = colors.keyword,
     ["function"] = colors.keyword,
+    ["on"] = colors.keyword,
+    ["this"] = colors.keyword,
 
     ["return"] = colors.keyword,
     ["break"] = colors.keyword,
-    ["goto"] = colors.keyword,
-
-    ["and"] = colors.keyword,
-    ["or"] = colors.keyword,
-    ["not"] = colors.keyword,
 
     ["true"] = colors.constant,
     ["false"] = colors.constant,

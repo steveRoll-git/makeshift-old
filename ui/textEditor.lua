@@ -166,7 +166,7 @@ function editor:updateLine(i)
 
       goto foundword
 
-    elseif line.string:sub(j, j + 1) == "--" and line.string:sub(j + 2, j + 3) ~= "[[" then
+    elseif line.string:sub(j, j + 1) == "//" then
 
       local commentContent = ""
       while j <= #line.string do
