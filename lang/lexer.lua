@@ -1,27 +1,30 @@
 local lookupify = require "util.lookupify"
 
 local keywords = lookupify {
-  "if", "on"
+  "if", "on", "true", "false"
 }
 
 local groupPunctuation = lookupify {
-  "==", "!=", ">=", "<=", "+=", "-=", "*=", "/=", "&&", "||"
+  "==", "!=", ">=", "<=", "+=", "-=", "*=", "/=", "&&", "||", ".."
 }
 
 local lexer = {}
 lexer.__index = lexer
 
-function lexer.new(code)
+function lexer.new(code, sourceName)
   local self = setmetatable({}, lexer)
-  self:init(code)
+  self:init(code, sourceName)
   return self
 end
 
-function lexer:init(code)
+function lexer:init(code, sourceName)
   self.code = code
+  self.sourceName = sourceName
   self.index = 1
   self.column = 1
   self.line = 1
+  self.prevColumn = 1
+  self.prevLine = 1
   self.reachedEnd = false
 end
 
@@ -47,7 +50,7 @@ function lexer:advanceChar(times)
     end
     local c = self:curChar()
     if c == "\n" then
-      self.column = 1
+      self.column = 0
       self.line = self.line + 1
     else
       self.column = self.column + 1
@@ -67,6 +70,9 @@ function lexer:nextToken()
     }
   end
 
+  self.prevColumn = self.column
+  self.prevLine = self.line
+
   if self:lookAhead(2) == "//" then
     self:advanceChar(2)
     local start = self.index
@@ -85,6 +91,9 @@ function lexer:nextToken()
     self:advanceChar()
     while self:curChar() ~= '"' do
       self:advanceChar()
+      if self:curChar() == "\n" or self.reachedEnd then
+        self:syntaxError("unfinished string")
+      end
     end
     self:advanceChar()
     return {
@@ -127,6 +136,14 @@ function lexer:nextToken()
       value = self.code:sub(start, self.index - 1)
     }
   end
+end
+
+function lexer:syntaxError(message)
+  error {
+    line = self.prevLine,
+    column = self.prevColumn,
+    message = message
+  }
 end
 
 return lexer
