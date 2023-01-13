@@ -11,6 +11,7 @@ local flux = require "lib.flux"
 local imageEditor = require "windows.imageEditor"
 local colorPicker = require "windows.colorPicker"
 local codeEditor = require "windows.codeEditor"
+local playtest = require "windows.playtest"
 local window = require "ui.window"
 local popupMenu = require "ui.popupMenu"
 local orderedSet = require "util.orderedSet"
@@ -62,6 +63,10 @@ local stencilLevel = 0
 
 local nextCursor
 
+local currentPlaytest
+
+local dimColor = {0, 0, 0, 0}
+
 local tweens = flux.group()
 
 local function screenToWorld(x, y)
@@ -106,6 +111,9 @@ local function closeWindow(which)
   if which.modalParent then
     which.modalParent.modalChild = nil
   end
+  if which.content == currentPlaytest then
+    currentPlaytest = nil
+  end
 end
 
 function AddWindow(w)
@@ -136,6 +144,9 @@ function StartClosingWindow(w)
       end)
   if w.modalParent then
     tweens:to(w.modalParent, 0.1, { modalOverlayAlpha = 0 })
+  end
+  if w.content == currentPlaytest then
+    tweens:to(dimColor, 0.2, {[4] = 0.0})
   end
 end
 
@@ -510,6 +521,18 @@ function love.wheelmoved(x, y)
 end
 
 function love.keypressed(k)
+  if k == "f5" and not currentPlaytest then
+    currentPlaytest = playtest.new {
+      objects = objects.list,
+      backgroundColor = backgroundColor,
+      windowWidth = 600,
+      windowHeight = 450,
+    }
+    AddWindow(currentPlaytest:window(
+      lg.getWidth() / 2 - currentPlaytest.windowWidth / 2,
+      lg.getHeight() / 2 - currentPlaytest.windowHeight / 2))
+    tweens:to(dimColor, 0.2, {[4] = 0.4})
+  end
   local last = windows:last()
   if last and last.content.keypressed and not last.modalChild then
     last.content:keypressed(k)
@@ -580,6 +603,9 @@ function love.draw()
   end
 
   lg.pop()
+
+  lg.setColor(dimColor)
+  lg.rectangle("fill", 0, 0, lg.getDimensions())
 
   for _, w in ipairs(windows.list) do
     lg.push()

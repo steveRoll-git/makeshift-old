@@ -89,7 +89,9 @@ function window:resize(w, h)
   local prevW, prevH = self.content.windowWidth, self.content.windowHeight
   self.content.windowWidth = w
   self.content.windowHeight = h - titleBarHeight
-  self.content:resize(self.content.windowWidth, self.content.windowHeight, prevW, prevH)
+  if self.content.resize then
+    self.content:resize(self.content.windowWidth, self.content.windowHeight, prevW, prevH)
+  end
 end
 
 function window:draw()
