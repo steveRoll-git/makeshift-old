@@ -3,16 +3,20 @@ local lookupify   = require "util.lookupify"
 local inspect     = require "lib.inspect"
 local articleNoun = require "util.articleNoun"
 
-local binaryOperators = lookupify {
-  "+", "-", "*", "/", ".."
-}
-
 local binaryPrecedence = {
   ["*"] = 1,
   ["/"] = 1,
   ["+"] = 2,
   ["-"] = 2,
-  [".."] = 3,
+  ["<"] = 3,
+  [">"] = 3,
+  ["<="] = 3,
+  [">="] = 3,
+  ["=="] = 4,
+  ["!="] = 4,
+  ["&&"] = 5,
+  ["||"] = 6,
+  [".."] = 7,
 }
 
 local unaryOperators = lookupify {
@@ -20,7 +24,7 @@ local unaryOperators = lookupify {
 }
 
 local function isBinaryOperator(token)
-  return token.kind == "punctuation" and binaryOperators[token.value]
+  return token.kind == "punctuation" and binaryPrecedence[token.value]
 end
 
 local parser = setmetatable({}, lexer)
