@@ -24,6 +24,27 @@ local defaultTextPadding = 3
 
 local cursorWidth = 2
 
+local macros = {
+  {
+    triggerKey = "return",
+    condition = function(self)
+      return self.lastText:match(".*%{$")
+    end,
+    action = function(self)
+      self:newLine()
+      self:keypressed("backspace")
+      self:keypressed("backspace")
+      self:inputText("}")
+      self:keypressed("up")
+      self:keypressed("end")
+    end
+  }
+}
+
+local autoIndentPatterns = {
+  ".*%{$"
+}
+
 local editor = setmetatable({}, baseButton)
 editor.__index = editor
 
@@ -51,6 +72,7 @@ function editor.new(x, y, w, h, font, multiline, text)
   obj.tabSize = 2
   obj.lastClick = { line = 1, col = 1 }
   obj.lastClickTime = 0
+  obj.lastText = ""
   obj.multiline = multiline
   obj.defaultTextColor = { 0, 0, 0 }
   obj.selectionColor = { 0.678, 0.839, 1.000, 0.4 }
@@ -212,7 +234,7 @@ function editor:updateLine(i)
   end
 end
 
-function editor:textinput(t)
+function editor:inputText(t, userAction)
   if self.selecting then self:eraseSelection() end
   if t:find("\n") then
     local lastLine = ""
@@ -267,7 +289,7 @@ function editor:cut()
 end
 
 function editor:paste()
-  self:textinput(love.system.getClipboardText())
+  self:inputText(love.system.getClipboardText())
 end
 
 function editor:selectAll()
@@ -276,6 +298,11 @@ function editor:selectAll()
   self.minSelection = self.cursor
   self.selectStart.line, self.selectStart.col = #self.lines, #self.lines[#self.lines].string + 1
   self.maxSelection = self.selectStart
+end
+
+function editor:textinput(t)
+  self.lastText = self.lastText .. t
+  self:inputText(t, true)
 end
 
 function editor:keypressed(k)
@@ -363,9 +390,17 @@ function editor:keypressed(k)
   elseif self.multiline and (k == "return" or k == "kpenter") then
     if self.selecting then self:eraseSelection() end
     self:newLine()
+    for _, p in ipairs(autoIndentPatterns) do
+      if self.lines[self.cursor.line - 1].string:match(p) then
+        self.lines[self.cursor.line].string = (" "):rep(self.tabSize) .. self:curLine() 
+        self.cursor.col = self.cursor.col + self.tabSize
+        self:updateLine()
+        break
+      end
+    end
     self:flick()
   elseif k == "tab" then
-    self:textinput((" "):rep(self.tabSize))
+    self:inputText((" "):rep(self.tabSize))
   elseif k == "backspace" then
     if self.selecting then
       self:eraseSelection()
@@ -408,6 +443,14 @@ function editor:keypressed(k)
   elseif k == "a" and ctrlDown then
     self:selectAll()
   end
+  for _, m in ipairs(macros) do
+    if m.triggerKey == k and m.condition(self) then
+      m.action(self)
+      self.lastText = ""
+      return
+    end
+  end
+  self.lastText = ""
   if changedPos then
     if love.keyboard.isDown("lshift", "rshift") then
       if not self.selecting then
@@ -464,6 +507,7 @@ function editor:onDown(x, y, b)
       self:flick()
     end
     SetCursor(love.mouse.getSystemCursor("ibeam"))
+    self.lastText = ""
   end
 end
 
