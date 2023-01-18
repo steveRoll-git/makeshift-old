@@ -8,6 +8,7 @@ love.keyboard.setKeyRepeat(true)
 FontName = "fonts/PT Root UI_Regular.ttf"
 
 local flux = require "lib.flux"
+local inspect = require "lib.inspect"
 local imageEditor = require "windows.imageEditor"
 local colorPicker = require "windows.colorPicker"
 local codeEditor = require "windows.codeEditor"
@@ -17,6 +18,8 @@ local popupMenu = require "ui.popupMenu"
 local orderedSet = require "util.orderedSet"
 local clamp = require "util.clamp"
 local guid = require "util.guid"
+local parser = require "lang.parser"
+local outputLua = require "lang.outputLua"
 
 function TODO(msg)
   error("todo: " .. msg, 1)
@@ -65,7 +68,7 @@ local nextCursor
 
 local currentPlaytest
 
-local dimColor = {0, 0, 0, 0}
+local dimColor = { 0, 0, 0, 0 }
 
 local tweens = flux.group()
 
@@ -146,7 +149,7 @@ function StartClosingWindow(w)
     tweens:to(w.modalParent, 0.1, { modalOverlayAlpha = 0 })
   end
   if w.content == currentPlaytest then
-    tweens:to(dimColor, 0.2, {[4] = 0.0})
+    tweens:to(dimColor, 0.2, { [4] = 0.0 })
   end
 end
 
@@ -220,6 +223,11 @@ local function openObjectCodeEditor(object)
   theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
   theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
   bringWindowToTop(theWindow)
+end
+
+local function parseObjectCode(code)
+  local theParser = parser.new(code)
+  return theParser:parseObjectCode()
 end
 
 love.graphics.setBackgroundColor(backgroundColor)
@@ -522,16 +530,32 @@ end
 
 function love.keypressed(k)
   if k == "f5" and not currentPlaytest then
-    currentPlaytest = playtest.new {
-      objects = objects.list,
-      backgroundColor = backgroundColor,
-      windowWidth = 600,
-      windowHeight = 450,
-    }
-    AddWindow(currentPlaytest:window(
-      lg.getWidth() / 2 - currentPlaytest.windowWidth / 2,
-      lg.getHeight() / 2 - currentPlaytest.windowHeight / 2))
-    tweens:to(dimColor, 0.2, {[4] = 0.4})
+    local error
+    for _, obj in ipairs(objects.list) do
+      if obj.code then
+        local success, result = pcall(parseObjectCode, obj.code)
+        if success then
+          local code, sourceMap = outputLua(result)
+          obj.events = code
+        else
+          TODO("actually show the error in a meaningful way")
+          error = result
+          break
+        end
+      end
+    end
+    if not error then
+      currentPlaytest = playtest.new {
+        objects = objects.list,
+        backgroundColor = backgroundColor,
+        windowWidth = 600,
+        windowHeight = 450,
+      }
+      AddWindow(currentPlaytest:window(
+        lg.getWidth() / 2 - currentPlaytest.windowWidth / 2,
+        lg.getHeight() / 2 - currentPlaytest.windowHeight / 2))
+      tweens:to(dimColor, 0.2, { [4] = 0.4 })
+    end
   end
   local last = windows:last()
   if last and last.content.keypressed and not last.modalChild then

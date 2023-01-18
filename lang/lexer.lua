@@ -1,7 +1,7 @@
 local lookupify = require "util.lookupify"
 
 local keywords = lookupify {
-  "if", "on", "true", "false"
+  "if", "on", "true", "false", "var"
 }
 
 local groupPunctuation = lookupify {
@@ -50,6 +50,7 @@ function lexer:advanceChar(times)
     end
     local c = self:curChar()
     if c == "\n" then
+      self.lastLineEnd = self.column
       self.column = 0
       self.line = self.line + 1
     else
@@ -82,7 +83,9 @@ function lexer:nextToken()
     self:advanceChar()
     return {
       kind = "singleComment",
-      value = self.code:sub(start, self.index - 2)
+      value = self.code:sub(start, self.index - 2),
+      line = self.prevLine,
+      column = self.prevColumn,
     }
   end
 
@@ -98,7 +101,9 @@ function lexer:nextToken()
     self:advanceChar()
     return {
       kind = "string",
-      value = self.code:sub(start, self.index - 2)
+      value = self.code:sub(start, self.index - 2),
+      line = self.prevLine,
+      column = self.prevColumn,
     }
   end
 
@@ -110,7 +115,9 @@ function lexer:nextToken()
     local value = self.code:sub(start, self.index - 1)
     return {
       kind = keywords[value] and "keyword" or "identifier",
-      value = value
+      value = value,
+      line = self.prevLine,
+      column = self.prevColumn,
     }
   end
 
@@ -121,7 +128,9 @@ function lexer:nextToken()
     end
     return {
       kind = "number",
-      value = self.code:sub(start, self.index - 1)
+      value = self.code:sub(start, self.index - 1),
+      line = self.prevLine,
+      column = self.prevColumn,
     }
   end
 
@@ -133,15 +142,24 @@ function lexer:nextToken()
     self:advanceChar()
     return {
       kind = "punctuation",
-      value = self.code:sub(start, self.index - 1)
+      value = self.code:sub(start, self.index - 1),
+      line = self.prevLine,
+      column = self.prevColumn,
     }
   end
 end
 
 function lexer:syntaxError(message)
+  local toLine, toColumn = self.line, self.column - 1
+  if toLine ~= self.prevLine then
+    toLine = self.prevLine
+    toColumn = self.lastLineEnd
+  end
   error {
     line = self.prevLine,
     column = self.prevColumn,
+    toLine = toLine,
+    toColumn = toColumn,
     message = message
   }
 end

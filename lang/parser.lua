@@ -64,12 +64,14 @@ end
 -- parses the primary pieces used in an expression.
 function parser:parsePrimary()
   if self.token.kind == "punctuation" and unaryOperators[self.token.value] then
-    local operator = self.token.value
+    local operator = self.token
     self:nextToken()
     return {
       kind = "unaryOperator",
-      operator = operator,
-      value = self:parsePrimary()
+      operator = operator.value,
+      value = self:parsePrimary(),
+      line = operator.line,
+      column = operator.column
     }
   end
 
@@ -82,7 +84,9 @@ function parser:parsePrimary()
   if string then
     return {
       kind = "stringLiteral",
-      value = string.value
+      value = string.value,
+      line = string.line,
+      column = string.column
     }
   end
 
@@ -90,7 +94,9 @@ function parser:parsePrimary()
   if boolean then
     return {
       kind = "boolean",
-      value = boolean.value
+      value = boolean.value,
+      line = boolean.line,
+      column = boolean.column
     }
   end
 
@@ -110,20 +116,20 @@ function parser:parseInfixExpression()
       kind = "binaryOperator",
       lhs = a,
       rhs = b,
-      operator = op
+      operator = op.value,
+      line = op.line
     })
   end
 
   table.insert(output, self:parsePrimary())
   while isBinaryOperator(self.token) do
     local p = binaryPrecedence[self.token.value]
-    while #operatorStack > 0 and p >= binaryPrecedence[operatorStack[#operatorStack]] do
+    while #operatorStack > 0 and p >= binaryPrecedence[operatorStack[#operatorStack].value] do
       popOperator()
     end
-    table.insert(operatorStack, self.token.value)
+    table.insert(operatorStack, self.token)
     self:nextToken()
-    local a, b, c, d = self:parsePrimary()
-    table.insert(output, a)
+    table.insert(output, self:parsePrimary())
   end
 
   while #operatorStack > 0 do
@@ -148,7 +154,8 @@ function parser:parseIndexOrCall(object)
     end
   end
 
-  if self:accept("punctuation", ".") then
+  local dot = self:accept("punctuation", ".")
+  if dot then
     local index = self:expect("identifier")
     return self:parseIndexOrCall {
       kind = "objectIndex",
@@ -156,21 +163,25 @@ function parser:parseIndexOrCall(object)
       index = {
         kind = "stringLiteral",
         value = index.value
-      }
+      },
+      line = dot.line
     }
   end
 
-  if self:accept("punctuation", "[") then
+  local lSquare = self:accept("punctuation", "[")
+  if lSquare then
     local index = self:parseInfixExpression()
     self:expect("punctuation", "]")
     return self:parseIndexOrCall {
       kind = "objectIndex",
       object = object,
-      index = index
+      index = index,
+      line = lSquare.line
     }
   end
 
-  if self:accept("punctuation", "(") then
+  local lParen = self:accept("punctuation", "(")
+  if lParen then
     local params = {}
     if self.token.kind ~= "punctuation" and self.token.value ~= ")" then
       local param = self:parseInfixExpression()
@@ -183,7 +194,8 @@ function parser:parseIndexOrCall(object)
     return self:parseIndexOrCall {
       kind = "functionCall",
       object = object,
-      params = params
+      params = params,
+      line = lParen.line
     }
   end
 
@@ -191,6 +203,21 @@ function parser:parseIndexOrCall(object)
 end
 
 function parser:parseStatement()
+  local line = self.line
+  
+  if self:accept("keyword", "var") then
+    local name = self:expect("identifier").value
+    local value
+    if self:accept("punctuation", "=") then
+      value = self:parseInfixExpression()
+    end
+    return {
+      kind = "localVariableDeclaration",
+      name = name,
+      value = value
+    }
+  end
+  
   local object = self:parseIndexOrCall()
   if object.kind == "functionCall" then
     return object
@@ -200,7 +227,8 @@ function parser:parseStatement()
   return {
     kind = "assignment",
     object = object,
-    value = value
+    value = value,
+    line = line
   }
 end
 
@@ -217,7 +245,8 @@ function parser:parseBlock()
 end
 
 function parser:parseObjectCode()
-  while not self.reachedEnd do
+  local events = {}
+  while true do
     if self:accept("keyword", "on") then
       local event = self:expect("identifier").value
       local params = {}
@@ -230,16 +259,23 @@ function parser:parseObjectCode()
         self:expect("punctuation", ")")
       end
       local body = self:parseBlock()
-      return {
+      table.insert(events, {
         kind = "eventHandler",
         eventName = event,
         params = params,
         body = body
-      }
+      })
     else
       self:syntaxError(("did not expect %s here"):format(self.token.value))
     end
+    if self.reachedEnd then
+      break
+    end
   end
+  return {
+    kind = "objectCode",
+    eventHandlers = events
+  }
 end
 
 return parser
