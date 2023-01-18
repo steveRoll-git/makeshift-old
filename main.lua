@@ -579,8 +579,8 @@ function love.resize(width, height)
     if w.maximized then
       w:resize(width, height)
     else
-      w.x = ((w.x + w.width / 2) / prevWidth) * width - w.width / 2
-      w.y = ((w.y + w.height / 2) / prevHeight) * height - w.height / 2
+      w.x = math.floor(((w.x + w.width / 2) / prevWidth) * width - w.width / 2)
+      w.y = math.floor(((w.y + w.height / 2) / prevHeight) * height - w.height / 2)
     end
   end
   cameraX = (cameraX + prevWidth / 2) - width / 2
