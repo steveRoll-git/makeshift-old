@@ -71,6 +71,19 @@ function output.assignment(tree)
   return result
 end
 
+function output.compoundAssignment(tree)
+  return output.assignment {
+    object = tree.object,
+    value = {
+      kind = "binaryOperator",
+      operator = tree.operator:sub(1, 1),
+      lhs = tree.object,
+      rhs = tree.value,
+      line = tree.line,
+    }
+  }
+end
+
 function output.unaryOperator(tree)
   local result = {}
   table.insert(result, { string = tree.operator, line = tree.line })

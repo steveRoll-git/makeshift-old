@@ -23,6 +23,10 @@ local unaryOperators = lookupify {
   "!", "-"
 }
 
+local compundAssignment = lookupify {
+  "+=", "-=", "*=", "/="
+}
+
 local function isBinaryOperator(token)
   return token.kind == "punctuation" and binaryPrecedence[token.value]
 end
@@ -209,8 +213,6 @@ function parser:parseIndexOrCall(object)
 end
 
 function parser:parseStatement()
-  local line = self.line
-
   if self:accept("keyword", "var") then
     local name = self:expect("identifier").value
     local value
@@ -228,10 +230,20 @@ function parser:parseStatement()
   if object.kind == "functionCall" then
     return object
   end
-  self:expect("punctuation", "=")
+
+  local line = self.line
+
+  local compoundOperator
+  if self.token.kind == "punctuation" and compundAssignment[self.token.value] then
+    compoundOperator = self.token.value
+    self:nextToken()
+  else
+    self:expect("punctuation", "=")
+  end
   local value = self:parseInfixExpression()
   return {
-    kind = "assignment",
+    kind = compoundOperator and "compoundAssignment" or "assignment",
+    operator = compoundOperator,
     object = object,
     value = value,
     line = line
