@@ -28,6 +28,10 @@ function output.identifier(tree)
   return { { string = tree.value, line = tree.line } }
 end
 
+function output.thisValue(tree)
+  return { { string = "self" } }
+end
+
 function output.objectIndex(tree)
   local result = {}
 

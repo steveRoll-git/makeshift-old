@@ -147,10 +147,16 @@ function parser:parseIndexOrCall(object)
       object = self:parseInfixExpression()
       self:expect("punctuation", ")")
     else
-      object = {
-        kind = "identifier",
-        value = self:expect("identifier").value
-      }
+      if self:accept("keyword", "this") then
+        object = {
+          kind = "thisValue"
+        }
+      else
+        object = {
+          kind = "identifier",
+          value = self:expect("identifier").value
+        }
+      end
     end
   end
 
@@ -204,7 +210,7 @@ end
 
 function parser:parseStatement()
   local line = self.line
-  
+
   if self:accept("keyword", "var") then
     local name = self:expect("identifier").value
     local value
@@ -217,7 +223,7 @@ function parser:parseStatement()
       value = value
     }
   end
-  
+
   local object = self:parseIndexOrCall()
   if object.kind == "functionCall" then
     return object

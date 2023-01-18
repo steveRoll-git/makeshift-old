@@ -1,7 +1,7 @@
 local lookupify = require "util.lookupify"
 
 local keywords = lookupify {
-  "if", "on", "true", "false", "var"
+  "if", "on", "true", "false", "var", "this"
 }
 
 local groupPunctuation = lookupify {
