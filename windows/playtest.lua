@@ -31,19 +31,28 @@ function playtest:init(game)
 end
 
 function playtest:mousepressed(x, y, b)
-  
+
 end
 
 function playtest:mousereleased(x, y, b)
-  
+
 end
 
 function playtest:mousemoved(x, y, dx, dy)
-  
+
 end
 
 function playtest:keypressed(key)
-  
+
+end
+
+function playtest:update(dt)
+  for _, obj in ipairs(self.objects) do
+    local f = obj.events["update"]
+    if f then
+      f(obj)
+    end
+  end
 end
 
 function playtest:draw()

@@ -49,6 +49,7 @@ function output.functionCall(tree)
   local result = {}
 
   insertAll(result, translate(tree.object))
+  result[#result].appendNewline = false
   table.insert(result, { string = "(" })
   for i, p in ipairs(tree.params) do
     insertAll(result, translate(p))
@@ -143,7 +144,7 @@ local function finalOutput(tree)
   local currentLine = 1
 
   for _, e in ipairs(elements) do
-    resultString = ("%s%s\n"):format(resultString, e.string)
+    resultString = (e.appendNewline == false and "%s%s" or "%s%s\n"):format(resultString, e.string)
     if e.line then
       sourceMap[currentLine] = e.line
     end

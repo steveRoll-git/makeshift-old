@@ -530,21 +530,28 @@ end
 
 function love.keypressed(k)
   if k == "f5" and not currentPlaytest then
-    local error
+    local compilationError
     for _, obj in ipairs(objects.list) do
       if obj.code then
         local success, result = pcall(parseObjectCode, obj.code)
         if success then
           local code, sourceMap = outputLua(result)
-          obj.events = code
+          local compiledCode, luaError = loadstring(code)
+          if luaError then
+            error(luaError)
+          end
+          obj.compiledCode = compiledCode
+          obj.events = obj.compiledCode()
         else
           TODO("actually show the error in a meaningful way")
-          error = result
+          compilationError = result
           break
         end
+      else
+        obj.events = {}
       end
     end
-    if not error then
+    if not compilationError then
       currentPlaytest = playtest.new {
         objects = objects.list,
         backgroundColor = backgroundColor,
@@ -572,6 +579,9 @@ end
 
 function love.update(dt)
   tweens:update(dt)
+  if currentPlaytest and not currentPlaytest.window.closeAnim then
+    currentPlaytest:update(dt)
+  end
 end
 
 function love.resize(width, height)
