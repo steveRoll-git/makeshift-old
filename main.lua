@@ -385,7 +385,8 @@ function love.mousepressed(x, y, b)
             width = selectedObject.width,
             height = selectedObject.height,
             imageData = selectedObject.imageData,
-            image = selectedObject.image
+            image = selectedObject.image,
+            code = selectedObject.code,
           }
         end },
         { separator = true },
@@ -406,6 +407,7 @@ function love.mousepressed(x, y, b)
             width = copiedObject.width,
             height = copiedObject.height,
             imageData = copiedObject.imageData,
+            code = copiedObject.code,
             copiedImage = true,
             id = guid()
           }
