@@ -57,7 +57,10 @@ local copiedObject
 
 local backgroundColor = { 0.7, 0.7, 0.7 }
 
-local cameraX, cameraY = 0, 0
+local gameWindowWidth, gameWindowHeight = 600, 450
+
+local cameraX = gameWindowWidth / 2 - lg.getWidth() / 2
+local cameraY = gameWindowHeight / 2 - lg.getHeight() / 2
 local panning = false
 
 local gridSize = 100
@@ -555,8 +558,8 @@ function love.keypressed(k)
       currentPlaytest = playtest.new {
         objects = objects.list,
         backgroundColor = backgroundColor,
-        windowWidth = 600,
-        windowHeight = 450,
+        windowWidth = gameWindowWidth,
+        windowHeight = gameWindowHeight,
       }
       AddWindow(currentPlaytest:window(
         lg.getWidth() / 2 - currentPlaytest.windowWidth / 2,
@@ -613,6 +616,10 @@ function love.draw()
     lg.setLineWidth(y == 0 and 4 or 1)
     lg.line(cameraX, y, cameraX + lg.getWidth(), y)
   end
+
+  lg.setColor(0.4, 0.6, 0.9, 1)
+  lg.setLineWidth(3)
+  lg.rectangle("line", 0, 0, gameWindowWidth, gameWindowHeight)
 
   for _, obj in ipairs(objects.list) do
     lg.setColor(1, 1, 1)
