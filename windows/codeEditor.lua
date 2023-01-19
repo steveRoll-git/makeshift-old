@@ -145,8 +145,16 @@ function codeEditor:textinput(t)
   self:updateScrollbars()
 end
 
-function codeEditor:close()
+function codeEditor:flushCode()
   self.targetObject.code = self.editor:getString()
+end
+
+function codeEditor:close()
+  self:flushCode()
+end
+
+function codeEditor:beforePlaytest()
+  self:flushCode()
 end
 
 function codeEditor:draw()

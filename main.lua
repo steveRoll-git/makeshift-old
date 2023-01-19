@@ -533,6 +533,11 @@ end
 
 function love.keypressed(k)
   if k == "f5" and not currentPlaytest then
+    for _, w in ipairs(windows.list) do
+      if w.content.beforePlaytest then
+        w.content:beforePlaytest()
+      end
+    end
     local compilationError
     for _, obj in ipairs(objects.list) do
       if obj.code then
