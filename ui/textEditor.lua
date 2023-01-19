@@ -260,6 +260,7 @@ function editor:inputText(t, userAction)
     self.cursor.lastCol = self.cursor.col
   end
   self:flick()
+  self:scrollIntoView()
 end
 
 function editor:newLine()
@@ -464,6 +465,7 @@ function editor:keypressed(k)
       self.selecting = false
     end
   end
+  self:scrollIntoView()
 end
 
 function editor:getMousePos(x, y)
@@ -604,6 +606,12 @@ function editor:getSelectionString()
   end
 end
 
+function editor:getScreenCursorPosition()
+  return
+    self.font:getWidth(self.lines[self.cursor.line].string:sub(1, self.cursor.col - 1)) + 1,
+    (self.cursor.line - 1) * self.font:getHeight()
+end
+
 function editor:draw()
   lg.push("all")
   lg.translate(self.x, self.y)
@@ -638,8 +646,8 @@ function editor:draw()
     lg.setColor(syntaxColors.identifier)
     lg.setLineStyle("rough")
     lg.setLineWidth(cursorWidth)
-    local dx = self.font:getWidth(self.lines[self.cursor.line].string:sub(1, self.cursor.col - 1)) + 1
-    lg.line(dx, (self.cursor.line - 1) * self.font:getHeight(), dx, self.cursor.line * self.font:getHeight())
+    local dx, dy = self:getScreenCursorPosition()
+    lg.line(dx, dy, dx, dy + self.font:getHeight())
   end
 
   lg.setStencilTest()
@@ -666,6 +674,22 @@ function editor:getNextWord(i)
     end
   end
   return #line + 1
+end
+
+function editor:scrollIntoView()
+  local dx, dy = self:getScreenCursorPosition()
+
+  if -self.textX > dx then
+    self.textX = -(dx - defaultTextPadding)
+  elseif -self.textX + self.w < dx then
+    self.textX = -(dx - self.w + defaultTextPadding)
+  end
+
+  if -self.textY > dy then
+    self.textY = -(dy - defaultTextPadding)
+  elseif -self.textY + self.h < dy + self.font:getHeight() then
+    self.textY = -(dy - self.h + self.font:getHeight() + defaultTextPadding)
+  end
 end
 
 return editor
