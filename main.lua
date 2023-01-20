@@ -208,7 +208,13 @@ local function openObjectImageEditor(object)
     local editor = imageEditor.new(object.imageData)
     editor.onPaint = function(data)
       object.imageData = data
-      object.image:replacePixels(data)
+      local prevW, prevH = object.image:getDimensions()
+      if prevW ~= data:getWidth() or prevH ~= data:getHeight() then
+        object.image = lg.newImage(data)
+        object.width, object.height = data:getDimensions()
+      else
+        object.image:replacePixels(data)
+      end
     end
     theWindow = editor:window(0, 0)
     theWindow.id = windowId

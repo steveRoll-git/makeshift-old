@@ -113,7 +113,13 @@ function imageEditor:updateTransparencyQuad()
 end
 
 function imageEditor:updateImage()
-  self.drawableImage:replacePixels(self.imageData)
+  if self.drawableImage:getWidth() ~= self.imageData:getWidth() or
+      self.drawableImage:getHeight() ~= self.imageData:getHeight() then
+    self.drawableImage = lg.newImage(self.imageData)
+    self:updateTransparencyQuad()
+  else
+    self.drawableImage:replacePixels(self.imageData)
+  end
   if self.onPaint then
     self.onPaint(self.imageData)
   end
@@ -321,6 +327,9 @@ function imageEditor:mousepressed(x, y, b)
     self.resizingPalette = true
   elseif b == 1 then
     self.painting = true
+    if self.undoData:getWidth() ~= self.imageData:getWidth() or self.undoData:getHeight() ~= self.imageData:getHeight() then
+      self.undoData = love.image.newImageData(self.imageData:getDimensions())
+    end
     self.undoData:paste(self.imageData, 0, 0, 0, 0, self.imageData:getDimensions())
     self.undoData, self.imageData = self.imageData, self.undoData
     local ix, iy = self:screenToImage(x, y)
@@ -466,20 +475,74 @@ function imageEditor:window(x, y)
       {
         title = "Image",
         items = {
-          {text = "Resize...", action = function ()
+          { text = "Resize...", action = function()
             TODO("open resize dialog")
-          end},
-          {text = "Crop...", action = function ()
+          end },
+          { text = "Crop...", action = function()
             TODO("open crop dialog")
-          end},
-          {text = "Auto Crop", action = function ()
-          end},
+          end },
+          { text = "Auto Crop", action = function()
+            local leftX = 0
+            local rightX = self.imageData:getWidth() - 1
+            local topY = 0
+            local bottomY = self.imageData:getHeight() - 1
+
+            for y = 0, self.imageData:getHeight() - 1 do
+              for x = 0, self.imageData:getWidth() - 1 do
+                local r, g, b, a = self.imageData:getPixel(x, y)
+                if a ~= 0 then
+                  topY = y
+                  goto topDone
+                end
+              end
+            end
+            ::topDone::
+            for y = self.imageData:getHeight() - 1, topY, -1 do
+              for x = 0, self.imageData:getWidth() - 1 do
+                local r, g, b, a = self.imageData:getPixel(x, y)
+                if a ~= 0 then
+                  bottomY = y
+                  goto bottomDone
+                end
+              end
+            end
+            ::bottomDone::
+            for x = 0, self.imageData:getWidth() - 1 do
+              for y = topY, bottomY do
+                local r, g, b, a = self.imageData:getPixel(x, y)
+                if a ~= 0 then
+                  leftX = x
+                  goto leftDone
+                end
+              end
+            end
+            ::leftDone::
+            for x = self.imageData:getWidth() - 1, leftX, -1 do
+              for y = topY, bottomY do
+                local r, g, b, a = self.imageData:getPixel(x, y)
+                if a ~= 0 then
+                  rightX = x
+                  goto rightDone
+                end
+              end
+            end
+            ::rightDone::
+            local width = rightX - leftX + 1
+            local height = bottomY - topY + 1
+            if width ~= self.imageData:getWidth() or height ~= self.imageData:getHeight() then
+              local newData = love.image.newImageData(width, height)
+              newData:paste(self.imageData, 0, 0, leftX, topY, width, height)
+              self.undoData = self.imageData
+              self.imageData = newData
+              self:updateImage()
+            end
+          end },
         }
       },
       {
         title = "Other",
         items = {
-          {text = "Cool Thing"}
+          { text = "Cool Thing" }
         }
       }
     })

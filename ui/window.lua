@@ -154,7 +154,7 @@ function window:draw()
   lg.push()
   PushStencil(self.stencilContent)
   lg.translate(0, self:contentYOffset())
-  if not love.keyboard.isDown("a") then self.content:draw() end 
+  self.content:draw()
   lg.pop()
 
   if self.modalChild then
