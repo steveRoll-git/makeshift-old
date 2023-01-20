@@ -11,6 +11,7 @@ local normalize     = require "util.normalize"
 local colorPicker   = require "windows.colorPicker"
 local window        = require "ui.window"
 local popupMenu     = require "ui.popupMenu"
+local menuStrip     = require "ui.menuStrip"
 
 local defaultPalette = {
   { 1, 1, 1, 1 },
@@ -63,9 +64,6 @@ function imageEditor.new(imageWidth, imageHeight)
 
   self.zoom = 1
   self.wheelFactor = 0.1
-
-  self.mouseX = 0
-  self.mouseY = 0
 
   self.transparencyQuad = lg.newQuad(0, 0, 0, 0, 0, 0)
   self:updateTransparencyQuad()
@@ -216,7 +214,7 @@ end
 -- Scanline flood fill algorithm, adapted from:
 -- https://lodev.org/cgtutor/floodfill.html
 function imageEditor:floodFill(origX, origY, newColor)
-  local oldColor = {self.imageData:getPixel(origX, origY)}
+  local oldColor = { self.imageData:getPixel(origX, origY) }
 
   if compareColors(oldColor, newColor) then
     return
@@ -287,6 +285,8 @@ function imageEditor:mousemoved(x, y, dx, dy)
 end
 
 function imageEditor:mousepressed(x, y, b)
+  self.mouseX, self.mouseY = x, y
+
   if x < self.palettePanelWidth then
     local index = math.floor(y / self.paletteSquareSize) * self.paletteColumns + math.floor(x / self.paletteSquareSize) +
         1
@@ -461,7 +461,28 @@ end
 function imageEditor:window(x, y)
   local new = window.new(self, "Image Editor",
     self.imageData:getWidth() + self.toolbarWidth + self.palettePanelWidth + 50,
-    self.imageData:getHeight() + 80, x, y)
+    self.imageData:getHeight() + 80, x, y,
+    menuStrip.new {
+      {
+        title = "Image",
+        items = {
+          {text = "Resize...", action = function ()
+            TODO("open resize dialog")
+          end},
+          {text = "Crop...", action = function ()
+            TODO("open crop dialog")
+          end},
+          {text = "Auto Crop", action = function ()
+          end},
+        }
+      },
+      {
+        title = "Other",
+        items = {
+          {text = "Cool Thing"}
+        }
+      }
+    })
   new.buttons = window.allButtons
   new.resizable = true
   new.minWidth = self.toolbarWidth + self.paletteSquareSize * 3 + 50

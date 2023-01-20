@@ -70,7 +70,7 @@ function popupMenu:draw()
   lg.translate(self.x, self.y)
   lg.scale(1, self.scaleY)
 
-  lg.setColor(0, 0, 0, 0.9)
+  lg.setColor(0, 0, 0, 0.95)
   lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)
 
   for _, b in ipairs(self.buttons) do

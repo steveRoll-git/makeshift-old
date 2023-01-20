@@ -36,15 +36,19 @@ window.titleBarHeight = titleBarHeight
 window.allButtons = { closeButton, maximizeButton }
 window.onlyCloseButton = { closeButton }
 
-function window.new(content, title, width, height, x, y)
+function window.new(content, title, width, height, x, y, menuStrip)
   local self = setmetatable({}, window)
-  self:init(content, title, width, height, x, y)
+  self:init(content, title, width, height, x, y, menuStrip)
   return self
 end
 
-function window:init(content, title, width, height, x, y)
+function window:init(content, title, width, height, x, y, menuStrip)
   self.content = content
   self.content.window = self
+  if menuStrip then
+    self.menuStrip = menuStrip
+    self.menuStrip.window = self
+  end
   self.title = title
   self:resize(width, height)
   self.x = x
@@ -53,7 +57,8 @@ function window:init(content, title, width, height, x, y)
     lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
   end
   self.stencilContent = function()
-    lg.rectangle("fill", 0, titleBarHeight, self.width, self.height - titleBarHeight)
+    local offset = self:contentYOffset()
+    lg.rectangle("fill", 0, offset, self.width, self.height - offset)
   end
 end
 
@@ -63,6 +68,10 @@ end
 
 function window:inside(x, y)
   return x >= self.x and x <= self.x + self.width and y >= self.y and y <= self.y + self.height
+end
+
+function window:contentYOffset()
+  return titleBarHeight + (self.menuStrip and self.menuStrip.height or 0)
 end
 
 function window:getTitleButtonOver(x, y)
@@ -88,7 +97,7 @@ function window:resize(w, h)
   self.height = h
   local prevW, prevH = self.content.windowWidth, self.content.windowHeight
   self.content.windowWidth = w
-  self.content.windowHeight = h - titleBarHeight
+  self.content.windowHeight = h - self:contentYOffset()
   if self.content.resize then
     self.content:resize(self.content.windowWidth, self.content.windowHeight, prevW, prevH)
   end
@@ -108,11 +117,6 @@ function window:draw()
 
   lg.setColor(0.2, 0.2, 0.2, 0.98)
   lg.rectangle("fill", 0, 0, self.width, self.height, self:cornerSize())
-  lg.setColor(1, 1, 1)
-  lg.setLineWidth(1)
-  lg.line(0, titleBarHeight, self.width, titleBarHeight)
-  lg.setColor(1, 1, 1, outlineColor)
-  lg.rectangle("line", 0, 0, self.width, self.height, self:cornerSize())
 
   PushStencil(self.stencilWhole)
 
@@ -139,11 +143,20 @@ function window:draw()
   lg.setFont(titleFont)
   lg.print(self.title, math.floor(cornerSize / 2))
 
+
+  if self.menuStrip then
+    lg.push()
+    lg.translate(0, titleBarHeight)
+    self.menuStrip:draw()
+    lg.pop()
+  end
+
   lg.push()
   PushStencil(self.stencilContent)
-  lg.translate(0, titleBarHeight)
-  self.content:draw()
+  lg.translate(0, self:contentYOffset())
+  if not love.keyboard.isDown("a") then self.content:draw() end 
   lg.pop()
+
   if self.modalChild then
     lg.setColor(0, 0, 0, self.modalOverlayAlpha)
     self.stencilContent()
@@ -158,6 +171,12 @@ function window:draw()
     lg.line(self.width - cornerSize - 1, self.height, self.width, self.height - cornerSize - 1)
     lg.line(self.width - cornerSize - 6, self.height, self.width, self.height - cornerSize - 6)
   end
+
+  lg.setColor(1, 1, 1)
+  lg.setLineWidth(1)
+  lg.line(0, titleBarHeight, self.width, titleBarHeight)
+  lg.setColor(1, 1, 1, outlineColor)
+  lg.rectangle("line", 0, 0, self.width, self.height, self:cornerSize())
 
 end
 

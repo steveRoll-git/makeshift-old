@@ -30,7 +30,11 @@ function button:inside(x, y)
 end
 
 function button:mousemoved(x, y, dx, dy)
+  local prev = self.over
   self.over = self:inside(x, y)
+  if self.over and not prev and self.onOver then
+    self:onOver()
+  end
 end
 
 function button:mousepressed(x, y, b)

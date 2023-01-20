@@ -44,6 +44,8 @@ local windowContentDown
 local windowControlButtonDown
 
 local activePopup
+local activeMenuStrip
+local menuStripDown
 
 local drawingObject = false
 local drawingObjectX, drawingObjectY
@@ -167,6 +169,15 @@ end
 
 function ClosePopupMenu()
   activePopup = nil
+  activeMenuStrip = nil
+end
+
+function SetActiveMenuStrip(strip)
+  activeMenuStrip = strip
+end
+
+function GetActiveMenuStrip()
+  return activeMenuStrip
 end
 
 function SetCursor(cursor)
@@ -240,6 +251,9 @@ function love.mousemoved(x, y, dx, dy)
   if not love.mouse.isDown(1) then
     nextCursor = nil
   end
+  if activeMenuStrip then
+    activeMenuStrip:mousemoved(x, y, dx, dy)
+  end
   if panning then
     cameraX = cameraX - dx
     cameraY = cameraY - dy
@@ -259,7 +273,8 @@ function love.mousemoved(x, y, dx, dy)
       math.max(y - resizeY, resizingWindow.minHeight or (window.titleBarHeight + 50)))
     resizingWindow.maximized = false
   elseif windowContentDown then
-    windowContentDown.content:mousemoved(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, dx, dy)
+    windowContentDown.content:mousemoved(x - windowContentDown.x,
+      y - windowContentDown.y - windowContentDown:contentYOffset(), dx, dy)
   elseif selectedObject and draggingObject and love.mouse.isDown(1) then
     selectedObject.x = (worldX - objectDragX)
     selectedObject.y = (worldY - objectDragY)
@@ -270,10 +285,13 @@ function love.mousemoved(x, y, dx, dy)
       if w:inside(x, y) then
         if w.resizable and not w.maximized and x >= w.x + w.width - resizeMargin and y >= w.y + w.height - resizeMargin then
           SetCursor(love.mouse.getSystemCursor("sizenwse"))
-        elseif y > w.y + window.titleBarHeight and not w.modalChild then
-          w.content:mousemoved(x - w.x, y - w.y - window.titleBarHeight, dx, dy)
-        else
+        elseif y < w.y + window.titleBarHeight then
           w.buttonOver = w:getTitleButtonOver(x, y)
+        else
+          w.content:mousemoved(x - w.x, y - w.y - w:contentYOffset(), dx, dy)
+        end
+        if w.menuStrip then
+          w.menuStrip:mousemoved(x, y, dx, dy)
         end
         for j = i - 1, 1, -1 do
           windows.list[j].buttonOver = nil
@@ -295,8 +313,9 @@ function love.mousepressed(x, y, b)
     if activePopup:inside(x, y) then
       activePopup:mousepressed(x, y, b)
       return
-    else
+    elseif not activeMenuStrip or not activeMenuStrip:inside(x, y) then
       activePopup = nil
+      activeMenuStrip = nil
     end
   end
   for i = #windows.list, 1, -1 do
@@ -315,6 +334,9 @@ function love.mousepressed(x, y, b)
             dragY = y - w.y
           end
         end
+      elseif w.menuStrip and y < w.y + window.titleBarHeight + w.menuStrip.height then
+        w.menuStrip:mousepressed(x, y, b)
+        menuStripDown = w.menuStrip
       else
         local right = w.x + w.width
         local bottom = w.y + w.height
@@ -324,7 +346,7 @@ function love.mousepressed(x, y, b)
           resizeX = x - w.width
           resizeY = y - w.height
         elseif not w.modalChild then
-          w.content:mousepressed(x - w.x, y - w.y - window.titleBarHeight, b)
+          w.content:mousepressed(x - w.x, y - w.y - w:contentYOffset(), b)
           windowContentDown = w
         end
       end
@@ -458,6 +480,9 @@ function love.mousereleased(x, y, b)
     drawingObjectX = nil
     drawingObjectY = nil
     love.mouse.setCursor()
+  elseif menuStripDown then
+    menuStripDown:mousereleased(x, y, b)
+    menuStripDown = nil
   elseif activePopup then
     activePopup:mousereleased(x, y, b)
   elseif b == 1 and windowControlButtonDown then
@@ -518,7 +543,8 @@ function love.mousereleased(x, y, b)
   elseif b == 1 and resizingWindow then
     resizingWindow = nil
   elseif windowContentDown then
-    windowContentDown.content:mousereleased(x - windowContentDown.x, y - windowContentDown.y - window.titleBarHeight, b)
+    windowContentDown.content:mousereleased(x - windowContentDown.x,
+      y - windowContentDown.y - windowContentDown:contentYOffset(), b)
     windowContentDown = nil
   end
 end
