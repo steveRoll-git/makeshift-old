@@ -1,6 +1,13 @@
-local window = require "ui.window"
 local love = love
 local lg = love.graphics
+
+local window = require "ui.window"
+local strongType = require "lang.strongType"
+
+local objectType = strongType.new("object", {
+  x = { type = "number" },
+  y = { type = "number" },
+})
 
 local playtest = {}
 playtest.__index = playtest
@@ -14,14 +21,17 @@ end
 function playtest:init(game)
   self.objects = {}
   for _, obj in ipairs(game.objects) do
-    table.insert(self.objects, {
+    local actual = {
       x = obj.x,
       y = obj.y,
       width = obj.width,
       height = obj.height,
       image = obj.image,
       events = obj.events
-    })
+    }
+    local instance = objectType:instance(actual)
+    actual._instance = instance
+    table.insert(self.objects, actual)
   end
   self.cameraX = 0
   self.cameraY = 0
@@ -50,7 +60,7 @@ function playtest:update(dt)
   for _, obj in ipairs(self.objects) do
     local f = obj.events["update"]
     if f then
-      f(obj)
+      f(obj._instance)
     end
   end
 end
