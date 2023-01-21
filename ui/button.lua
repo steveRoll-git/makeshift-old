@@ -1,7 +1,7 @@
 local love = love
 local lg = love.graphics
 
-local font = love.graphics.newFont(FontName, 14)
+local defaultFont = love.graphics.newFont(FontName, 14)
 
 local button = {}
 button.__index = button
@@ -9,13 +9,13 @@ button.__index = button
 button.font = font
 button.cornerSize = 4
 
-function button.new(x, y, width, height, text, onClick)
+function button.new(x, y, width, height, text, onClick, font)
   local self = setmetatable({}, button)
-  self:init(x, y, width, height, text, onClick)
+  self:init(x, y, width, height, text, onClick, font)
   return self
 end
 
-function button:init(x, y, width, height, text, onClick)
+function button:init(x, y, width, height, text, onClick, font)
   self.x = x
   self.y = y
   self.width = width
@@ -23,6 +23,7 @@ function button:init(x, y, width, height, text, onClick)
   self.text = text
   self.onClick = onClick
   self.enabled = true
+  self.font = font or defaultFont
 end
 
 function button:inside(x, y)
@@ -67,10 +68,10 @@ function button:draw()
     lg.setColor(1, 1, 1, self.enabled and 0.2 or 0.1)
     lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)
   end
-  lg.setFont(font)
+  lg.setFont(self.font)
   local c = self.enabled and 1 or 0.4
   lg.setColor(c, c, c, 1)
-  lg.printf(self.text, button.cornerSize, self.height / 2 - font:getHeight() / 2, self.width - button.cornerSize * 2,
+  lg.printf(self.text, button.cornerSize, self.height / 2 - self.font:getHeight() / 2, self.width - button.cornerSize * 2,
     self.textAlign or "center")
   lg.pop()
 end

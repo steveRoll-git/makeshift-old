@@ -51,6 +51,7 @@ local drawingObject = false
 local drawingObjectX, drawingObjectY
 
 local objects = orderedSet.new()
+local objectsById = {}
 
 local selectedObject
 local draggingObject = false
@@ -194,11 +195,21 @@ local function closeIfExists(windowId)
   end
 end
 
+local function addObject(object)
+  objects:add(object)
+  objectsById[object.id] = object
+end
+
 local function removeObject(object)
   objects:remove(object)
+  objectsById[object.id] = nil
   selectedObject = nil
   closeIfExists("image " .. object.id)
   closeIfExists("code " .. object.id)
+end
+
+function GetObjectById(id)
+  return objectsById[id]
 end
 
 local function openObjectImageEditor(object)
@@ -226,15 +237,11 @@ local function openObjectImageEditor(object)
   bringWindowToTop(theWindow)
 end
 
-local function openObjectCodeEditor(object)
+function OpenObjectCodeEditor(object)
   local windowId = "code " .. object.id
   local theWindow = windowsById[windowId]
   if not theWindow then
     local editor = codeEditor.new(object)
-    editor.onPaint = function(data)
-      object.imageData = data
-      object.image:replacePixels(data)
-    end
     theWindow = editor:window(0, 0)
     theWindow.id = windowId
     AddWindow(theWindow)
@@ -243,6 +250,7 @@ local function openObjectCodeEditor(object)
   theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
   theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
   bringWindowToTop(theWindow)
+  return theWindow
 end
 
 local function parseObjectCode(code)
@@ -396,7 +404,7 @@ function love.mousepressed(x, y, b)
           openObjectImageEditor(selectedObject)
         end },
         { text = "Code", action = function()
-          openObjectCodeEditor(selectedObject)
+          OpenObjectCodeEditor(selectedObject)
         end },
         { separator = true },
         { text = "Bring to top", action = function()
@@ -440,7 +448,7 @@ function love.mousepressed(x, y, b)
             id = guid()
           }
           new.image = copiedObject.image
-          objects:add(new)
+          addObject(new)
         end },
         { separator = true },
         { text = "Background color", action = function()
@@ -476,7 +484,7 @@ function love.mousereleased(x, y, b)
       }
       new.imageData = love.image.newImageData(new.width, new.height)
       new.image = love.graphics.newImage(new.imageData)
-      objects:add(new)
+      addObject(new)
       selectedObject = new
 
       openObjectImageEditor(new)
@@ -578,11 +586,12 @@ function love.keypressed(k)
         local success, result = pcall(parseObjectCode, obj.code)
         if success then
           local code, sourceMap = outputLua(result)
-          local compiledCode, luaError = loadstring(code)
+          local compiledCode, luaError = loadstring(code, obj.id)
           if luaError then
             error(luaError)
           end
           obj.compiledCode = compiledCode
+          obj.sourceMap = sourceMap
           obj.events = obj.compiledCode()
         else
           TODO("actually show the error in a meaningful way")

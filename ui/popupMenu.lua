@@ -3,7 +3,8 @@ local lg = love.graphics
 
 local button = require "ui.button"
 
-local itemHeight = button.font:getHeight() + 10
+local font = love.graphics.newFont(FontName, 14)
+local itemHeight = font:getHeight() + 10
 
 local separatorMargin = 5
 
@@ -34,7 +35,7 @@ function popupMenu:init(items, x, y, width)
         if item.action then item.action() end
       end
 
-      local new = button.new(0, buttonY, width, itemHeight, item.text, onClick)
+      local new = button.new(0, buttonY, width, itemHeight, item.text, onClick, font)
       new.textAlign = "left"
       new.outline = false
       if item.enabled == false then

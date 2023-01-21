@@ -148,7 +148,9 @@ local function finalOutput(tree)
     if e.line then
       sourceMap[currentLine] = e.line
     end
-    currentLine = currentLine + 1
+    if e.appendNewline then
+      currentLine = currentLine + 1
+    end
   end
 
   return resultString, sourceMap
