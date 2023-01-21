@@ -312,7 +312,7 @@ function parser:parseObjectCode()
         params = params,
         body = body
       })
-    else
+    elseif self.token.kind ~= "EOF" then
       self:syntaxError(("did not expect %s here"):format(self.token.value))
     end
     if self.reachedEnd then

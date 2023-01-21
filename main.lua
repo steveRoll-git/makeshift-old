@@ -594,7 +594,9 @@ function love.keypressed(k)
           obj.sourceMap = sourceMap
           obj.events = obj.compiledCode()
         else
-          TODO("actually show the error in a meaningful way")
+          -- TODO show toast alert "fix syntax errors before running!"
+          local editor = OpenObjectCodeEditor(obj).content
+          editor:checkSyntax()
           compilationError = result
           break
         end
@@ -630,8 +632,10 @@ end
 
 function love.update(dt)
   tweens:update(dt)
-  if currentPlaytest and not currentPlaytest.window.closeAnim then
-    currentPlaytest:update(dt)
+  for _, w in ipairs(windows.list) do
+    if w.content.update and not w.closeAnim then
+      w.content:update(dt)
+    end
   end
 end
 

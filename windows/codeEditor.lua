@@ -5,8 +5,15 @@ local textEditor = require "ui.textEditor"
 local window     = require "ui.window"
 local scrollbar  = require "ui.scrollbar"
 local clamp      = require "util.clamp"
+local parser     = require "lang.parser"
+local inspect    = require "lib.inspect"
 
 local font = love.graphics.newFont("fonts/source-code-pro.regular.ttf", 16)
+
+local function parseObjectCode(code)
+  local theParser = parser.new(code)
+  return theParser:parseObjectCode()
+end
 
 local codeEditor = {}
 codeEditor.__index = codeEditor
@@ -32,6 +39,9 @@ function codeEditor:init(targetObject)
   end)
   self.scrollY = 0
   self.scrollX = 0
+  -- how long to wait after no input before doing a syntax check
+  self.inactivityInterval = 0.5
+  self.lastActivityTime = love.timer.getTime()
 end
 
 function codeEditor:totalTextHeight()
@@ -79,6 +89,30 @@ function codeEditor:updateScrollbars()
     self:updateScrollX()
   else
     self.xScrollEnabled = false
+  end
+end
+
+function codeEditor:activity()
+  self.lastActivityTime = love.timer.getTime()
+  if self.syntaxUnderline then
+    self.editor.underlines:remove(self.syntaxUnderline)
+    self.syntaxUnderline = nil
+  end
+  self.didCheck = false
+end
+
+function codeEditor:checkSyntax()
+  self:flushCode()
+  local success, result = pcall(parseObjectCode, self.targetObject.code)
+  if not success then
+    self.syntaxUnderline = {
+      fromLine = result.fromLine,
+      fromColumn = result.fromColumn,
+      toLine = result.toLine,
+      toColumn = result.toColumn,
+      color = { 1, 0, 0 },
+    }
+    self.editor.underlines:add(self.syntaxUnderline)
   end
 end
 
@@ -138,11 +172,21 @@ end
 function codeEditor:keypressed(key)
   self.editor:keypressed(key)
   self:updateScrollbars()
+  self:activity()
 end
 
 function codeEditor:textinput(t)
   self.editor:textinput(t)
   self:updateScrollbars()
+  self:activity()
+end
+
+function codeEditor:update(dt)
+  if not self.didCheck and love.timer.getTime() >= self.lastActivityTime + self.inactivityInterval then
+    self.didCheck = true
+
+    self:checkSyntax()
+  end
 end
 
 function codeEditor:flushCode()
@@ -170,8 +214,10 @@ function codeEditor:draw()
 
   lg.setColor(0.3, 0.3, 0.3)
   lg.setLineWidth(1)
-  lg.line(self.windowWidth - self.scrollbarY.width, 0, self.windowWidth - self.scrollbarY.width, self.windowHeight - self.scrollbarX.height)
-  lg.line(0, self.windowHeight - self.scrollbarX.height, self.windowWidth - self.scrollbarY.width, self.windowHeight - self.scrollbarX.height)
+  lg.line(self.windowWidth - self.scrollbarY.width, 0, self.windowWidth - self.scrollbarY.width,
+    self.windowHeight - self.scrollbarX.height)
+  lg.line(0, self.windowHeight - self.scrollbarX.height, self.windowWidth - self.scrollbarY.width,
+    self.windowHeight - self.scrollbarX.height)
 end
 
 function codeEditor:window(x, y)

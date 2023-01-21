@@ -25,7 +25,7 @@ function lexer:init(code, sourceName)
   self.line = 1
   self.prevColumn = 1
   self.prevLine = 1
-  self.reachedEnd = false
+  self.reachedEnd = #code == 0
 end
 
 function lexer:lookAhead(length)
@@ -65,14 +65,14 @@ function lexer:nextToken()
     self:advanceChar()
   end
 
+  self.prevColumn = self.column
+  self.prevLine = self.line
+
   if self.reachedEnd then
     return {
       kind = "EOF"
     }
   end
-
-  self.prevColumn = self.column
-  self.prevLine = self.line
 
   if self:lookAhead(2) == "//" then
     self:advanceChar(2)
@@ -150,14 +150,14 @@ function lexer:nextToken()
 end
 
 function lexer:syntaxError(message)
-  local toLine, toColumn = self.line, self.column - 1
+  local toLine, toColumn = self.line, self.column
   if toLine ~= self.prevLine then
     toLine = self.prevLine
     toColumn = self.lastLineEnd
   end
   error {
-    line = self.prevLine,
-    column = self.prevColumn,
+    fromLine = self.prevLine,
+    fromColumn = self.prevColumn,
     toLine = toLine,
     toColumn = toColumn,
     message = message

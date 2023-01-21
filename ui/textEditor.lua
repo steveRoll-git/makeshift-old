@@ -9,6 +9,7 @@ local baseButton   = require "ui.baseButton"
 local syntaxColors = require "ui.syntaxColors"
 local clamp        = require "util.clamp"
 local split        = require "util.split"
+local unorderedSet = require "util.unorderedSet"
 
 local cursor_mt = {
   __lt = function(a, b)
@@ -45,6 +46,9 @@ local autoIndentPatterns = {
   ".*%{$"
 }
 
+local underlineImage = lg.newImage("images/squiggleUnderline.png")
+underlineImage:setWrap("repeat")
+
 local editor = setmetatable({}, baseButton)
 editor.__index = editor
 
@@ -74,9 +78,9 @@ function editor.new(x, y, w, h, font, multiline, text)
   obj.lastClickTime = 0
   obj.lastText = ""
   obj.multiline = multiline
-  obj.defaultTextColor = { 0, 0, 0 }
   obj.selectionColor = { 0.678, 0.839, 1.000, 0.4 }
   obj.textX, obj.textY = defaultTextPadding, defaultTextPadding
+  obj.underlines = unorderedSet.new()
   obj.stencilFunc = function()
     lg.rectangle("fill", 0, 0, obj.w, obj.h)
   end
@@ -393,7 +397,7 @@ function editor:keypressed(k)
     self:newLine()
     for _, p in ipairs(autoIndentPatterns) do
       if self.lines[self.cursor.line - 1].string:match(p) then
-        self.lines[self.cursor.line].string = (" "):rep(self.tabSize) .. self:curLine() 
+        self.lines[self.cursor.line].string = (" "):rep(self.tabSize) .. self:curLine()
         self.cursor.col = self.cursor.col + self.tabSize
         self:updateLine()
         break
@@ -606,10 +610,13 @@ function editor:getSelectionString()
   end
 end
 
+function editor:textToScreen(line, col)
+  return self.font:getWidth(self.lines[line].string:sub(1, col - 1)) + 1,
+      (line - 1) * self.font:getHeight()
+end
+
 function editor:getScreenCursorPosition()
-  return
-    self.font:getWidth(self.lines[self.cursor.line].string:sub(1, self.cursor.col - 1)) + 1,
-    (self.cursor.line - 1) * self.font:getHeight()
+  return self:textToScreen(self.cursor.line, self.cursor.col)
 end
 
 function editor:draw()
@@ -619,6 +626,21 @@ function editor:draw()
 
   lg.push()
   lg.translate(self.textX, self.textY)
+
+  for _, underline in ipairs(self.underlines.list) do
+    local fromDx, fromDy = self:textToScreen(underline.fromLine, underline.fromColumn)
+    local toDx, toDy = self:textToScreen(underline.toLine, underline.toColumn + 1)
+    fromDy = fromDy + self.font:getHeight()
+    toDy = toDy + self.font:getHeight()
+    if fromDx == toDx then
+      toDx = toDx + self.font:getWidth(" ")
+    end
+    if not underline._quad then
+      underline._quad = lg.newQuad(0, 0, toDx - fromDx, underlineImage:getHeight(), underlineImage:getDimensions())
+    end
+    lg.setColor(underline.color)
+    lg.draw(underlineImage, underline._quad, fromDx, fromDy - underlineImage:getHeight())
+  end
 
   for i, l in ipairs(self.lines) do
     local dy = (i - 1) * self.font:getHeight()
