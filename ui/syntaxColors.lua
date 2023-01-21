@@ -11,6 +11,7 @@ local data = {
   words = {
     ["if"] = colors.keyword,
     ["else"] = colors.keyword,
+    ["elseif"] = colors.keyword,
     ["while"] = colors.keyword,
     ["for"] = colors.keyword,
     ["in"] = colors.keyword,

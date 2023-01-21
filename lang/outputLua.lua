@@ -85,6 +85,30 @@ function output.compoundAssignment(tree)
   }
 end
 
+function output.ifStatement(tree)
+  local result = {}
+
+  table.insert(result, { string = "if" })
+  insertAll(result, translate(tree.condition))
+  table.insert(result, { string = "then" })
+  insertAll(result, translate(tree.body))
+
+  for _, e in ipairs(tree.elseIfs) do
+    table.insert(result, { string = "elseif" })
+    insertAll(result, translate(e.condition))
+    table.insert(result, { string = "then" })
+    insertAll(result, translate(e.body))
+  end
+
+  if tree.elseBody then
+    table.insert(result, { string = "else" })
+    insertAll(result, translate(tree.elseBody))
+  end
+
+  table.insert(result, { string = "end" })
+  return result
+end
+
 function output.unaryOperator(tree)
   local result = {}
   table.insert(result, { string = tree.operator, line = tree.line })

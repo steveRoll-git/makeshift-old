@@ -226,6 +226,35 @@ function parser:parseStatement()
     }
   end
 
+  if self:accept("keyword", "if") then
+    local condition = self:parseInfixExpression()
+    local body = self:parseBlock()
+    local elseIfs = {}
+    local elseBody
+    while true do
+      if self:accept("keyword", "elseif") then
+        local condition = self:parseInfixExpression()
+        local body = self:parseBlock()
+        table.insert(elseIfs, {
+          condition = condition,
+          body = body
+        })
+      elseif self:accept("keyword", "else") then
+        elseBody = self:parseBlock()
+        break
+      else
+        break
+      end
+    end
+    return {
+      kind = "ifStatement",
+      condition = condition,
+      body = body,
+      elseIfs = elseIfs,
+      elseBody = elseBody
+    }
+  end
+
   local object = self:parseIndexOrCall()
   if object.kind == "functionCall" then
     return object
