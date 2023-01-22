@@ -32,10 +32,9 @@ local macros = {
       return self.lastText:match(".*%{$")
     end,
     action = function(self)
+      local indent = self.lines[self.cursor.line - 1].string:match("^(%s*)")
       self:newLine()
-      self:keypressed("backspace")
-      self:keypressed("backspace")
-      self:inputText("}")
+      self:inputText(indent .. "}")
       self:keypressed("up")
       self:keypressed("end")
     end
@@ -267,20 +266,26 @@ function editor:inputText(t, userAction)
   self:scrollIntoView()
 end
 
-function editor:newLine()
+function editor:newLine(userAction)
   local orig = self:curLine()
-  local indent = orig:match("^(%s*)")
+  local indent
   local newS = orig:sub(self.cursor.col)
   local line = {
-    string = indent .. newS,
+    string = newS,
     text = lg.newText(self.font, newS)
   }
+  if userAction then
+    indent = orig:match("^(%s*)")
+    line.string = indent .. line.string
+  end
   table.insert(self.lines, self.cursor.line + 1, line)
   self.lines[self.cursor.line].string = self:curLine():sub(1, self.cursor.col - 1)
   self:updateLine()
   self.cursor.line = self.cursor.line + 1
   self:updateLine()
-  self.cursor.col = #indent + 1
+  if userAction then
+    self.cursor.col = #indent + 1
+  end
   self.cursor.lastCol = self.cursor.col
 end
 
@@ -394,7 +399,7 @@ function editor:keypressed(k)
     self:flick()
   elseif self.multiline and (k == "return" or k == "kpenter") then
     if self.selecting then self:eraseSelection() end
-    self:newLine()
+    self:newLine(true)
     for _, p in ipairs(autoIndentPatterns) do
       if self.lines[self.cursor.line - 1].string:match(p) then
         self.lines[self.cursor.line].string = (" "):rep(self.tabSize) .. self:curLine()
