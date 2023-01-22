@@ -172,7 +172,7 @@ local function finalOutput(tree)
     if e.line then
       sourceMap[currentLine] = e.line
     end
-    if e.appendNewline then
+    if e.appendNewline ~= false then
       currentLine = currentLine + 1
     end
   end
