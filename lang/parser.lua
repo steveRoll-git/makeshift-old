@@ -255,6 +255,16 @@ function parser:parseStatement()
     }
   end
 
+  if self:accept("keyword", "while") then
+    local condition = self:parseInfixExpression()
+    local body = self:parseBlock()
+    return {
+      kind = "whileLoop",
+      condition = condition,
+      body = body,
+    }
+  end
+
   local object = self:parseIndexOrCall()
   if object.kind == "functionCall" then
     return object

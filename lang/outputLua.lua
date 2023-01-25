@@ -109,6 +109,18 @@ function output.ifStatement(tree)
   return result
 end
 
+function output.whileLoop(tree)
+  local result = {}
+
+  table.insert(result, { string = "while" })
+  insertAll(result, translate(tree.condition))
+  table.insert(result, { string = "do" })
+  insertAll(result, translate(tree.body))
+  table.insert(result, { string = " coroutine.yield('loop') end" })
+
+  return result
+end
+
 function output.unaryOperator(tree)
   local result = {}
   table.insert(result, { string = tree.operator, line = tree.line })

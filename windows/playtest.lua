@@ -13,6 +13,16 @@ local objectType = strongType.new("object", {
   y = { type = "number" },
 })
 
+local events = {
+  "update", "mousepressed", "mousereleased", "mousemoved", "keypressed"
+}
+
+-- the maximum amount of times to `yield` inside a loop before moving on.
+local maxLoopYields = 1000
+local loopStuckMessage = "Your code may be stuck in an infinite loop."
+-- how long to wait in a loop before showing the loop stuck message.
+local loopStuckWaitTime = 5
+
 local playtest = {}
 playtest.__index = playtest
 
@@ -44,6 +54,25 @@ function playtest:init(game)
   self.windowHeight = game.windowHeight
   self.backgroundColor = game.backgroundColor
   self.running = true
+
+  -- a separate coroutine is created for every event.
+  -- this is for when a user-code function is stuck in an infinite loop,
+  -- the `yield`s at the end of each loop can give control back to the playtest,
+  -- preventing the whole program from being stuck.
+  self.coroutines = {}
+  for _, event in ipairs(events) do
+    self.coroutines[event] = coroutine.create(function(...)
+      while true do
+        for _, obj in ipairs(self.objects) do
+          local f = obj.events[event]
+          if f then
+            self:objectPcall(f, obj, ...)
+          end
+        end
+        coroutine.yield("eventEnd")
+      end
+    end)
+  end
 
   self.openCodeButton = button.new(50, self.windowHeight - 100, 130, 35, "Go to code", function()
     local w = OpenObjectCodeEditor(GetObjectById(self.errorSource))
@@ -77,21 +106,53 @@ Line %d:
   end
 end
 
+function playtest:callEvent(event, ...)
+  local co = self.coroutines[event]
+
+  if self.loopStuckCoroutine and self.loopStuckCoroutine ~= co then
+    return
+  end
+
+  local stillInLoop = true
+  for i = 1, maxLoopYields do
+    local success, result = coroutine.resume(co, ...)
+    if success then
+      if result ~= "loop" then
+        stillInLoop = false
+        break
+      end
+    else
+      error(result)
+    end
+  end
+
+  if stillInLoop then
+    self.loopStuckCoroutine = co
+    self.loopStuckTime = self.loopStuckTime or love.timer.getTime()
+  else
+    self.loopStuckCoroutine = nil
+    self.showLoopMessage = false
+  end
+end
+
 function playtest:mousepressed(x, y, b)
   if self.error then
     self.openCodeButton:mousepressed(x, y, b)
+    return
   end
 end
 
 function playtest:mousereleased(x, y, b)
   if self.error then
     self.openCodeButton:mousereleased(x, y, b)
+    return
   end
 end
 
 function playtest:mousemoved(x, y, dx, dy)
   if self.error then
     self.openCodeButton:mousemoved(x, y, dx, dy)
+    return
   end
 end
 
@@ -102,11 +163,10 @@ end
 function playtest:update(dt)
   if not self.running then return end
 
-  for _, obj in ipairs(self.objects) do
-    local f = obj.events["update"]
-    if f then
-      self:objectPcall(f, obj)
-    end
+  self:callEvent("update", dt)
+
+  if self.loopStuckCoroutine and not self.showLoopMessage and love.timer.getTime() - self.loopStuckTime >= loopStuckWaitTime then
+    self.showLoopMessage = true
   end
 end
 
@@ -120,6 +180,14 @@ function playtest:draw()
     lg.draw(obj.image, obj.x, obj.y)
   end
   lg.pop()
+
+  if self.showLoopMessage then
+    lg.setColor(0, 0, 0, 0.8)
+    lg.rectangle("fill", 0, 0, errorFont:getWidth(loopStuckMessage), errorFont:getHeight())
+    lg.setColor(1, 1, 1)
+    lg.setFont(errorFont)
+    lg.print(loopStuckMessage, 0, 0)
+  end
 
   if self.error then
     lg.setColor(0, 0, 0, 0.8)
