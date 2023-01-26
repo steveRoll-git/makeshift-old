@@ -116,7 +116,7 @@ function output.whileLoop(tree)
   insertAll(result, translate(tree.condition))
   table.insert(result, { string = "do" })
   insertAll(result, translate(tree.body))
-  table.insert(result, { string = " coroutine.yield('loop') end" })
+  table.insert(result, { string = (" coroutine.yield('loop %d') end"):format(tree.line) })
 
   return result
 end

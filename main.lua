@@ -586,8 +586,6 @@ function love.keypressed(k)
         local success, result = pcall(parseObjectCode, obj.code)
         if success then
           local code, sourceMap = outputLua(result)
-          print(_VERSION)
-          print(code)
           local compiledCode, luaError = loadstring(code, obj.id)
           if luaError then
             error(luaError)

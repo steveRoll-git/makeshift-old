@@ -255,13 +255,15 @@ function parser:parseStatement()
     }
   end
 
-  if self:accept("keyword", "while") then
+  local tWhile = self:accept("keyword", "while")
+  if tWhile then
     local condition = self:parseInfixExpression()
     local body = self:parseBlock()
     return {
       kind = "whileLoop",
       condition = condition,
       body = body,
+      line = tWhile.line,
     }
   end
 

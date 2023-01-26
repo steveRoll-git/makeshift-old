@@ -21,7 +21,9 @@ local events = {
 local maxLoopYields = 1000
 local loopStuckMessage = "Your code may be stuck in an infinite loop."
 -- how long to wait in a loop before showing the loop stuck message.
-local loopStuckWaitTime = 5
+local loopStuckWaitTime = 3
+
+local topBarHeight = errorFont:getHeight() * 2
 
 local playtest = {}
 playtest.__index = playtest
@@ -43,6 +45,7 @@ function playtest:init(game)
       image = obj.image,
       events = obj.events,
       sourceMap = obj.sourceMap,
+      id = obj.id,
     }
     local instance = objectType:instance(actual)
     actual._instance = instance
@@ -54,6 +57,8 @@ function playtest:init(game)
   self.windowHeight = game.windowHeight
   self.backgroundColor = game.backgroundColor
   self.running = true
+  
+  self.topBarHeight = errorFont:getHeight() * 2
 
   -- a separate coroutine is created for every event.
   -- this is for when a user-code function is stuck in an infinite loop,
@@ -64,6 +69,7 @@ function playtest:init(game)
     self.coroutines[event] = coroutine.create(function(...)
       while true do
         for _, obj in ipairs(self.objects) do
+          self.runningObject = obj
           local f = obj.events[event]
           if f then
             self:objectPcall(f, obj, ...)
@@ -74,13 +80,25 @@ function playtest:init(game)
     end)
   end
 
-  self.openCodeButton = button.new(50, self.windowHeight - 100, 130, 35, "Go to code", function()
+  self.openErrorCodeButton = button.new(50, self.windowHeight - 100, 130, 35, "Go to code", function()
     local w = OpenObjectCodeEditor(GetObjectById(self.errorSource))
     w.content.editor.cursor.line = self.errorLine
     w.content.editor.cursor.col = 1
     w.content.editor:scrollIntoView()
     w.content:updateScrollbars()
   end, errorFont)
+  
+  local h = errorFont:getHeight() * 1.5
+  self.openLoopCodeButton = button.new(self.windowWidth - 140, topBarHeight / 2 - h / 2, 130, h, "Go to code", function()
+    local w = OpenObjectCodeEditor(GetObjectById(self.runningObject.id))
+    w.content.editor.cursor.line = self.loopStuckLine
+    w.content.editor.cursor.col = 1
+    w.content.editor:scrollIntoView()
+    w.content:updateScrollbars()
+  end, errorFont)
+
+  self.loopStuckText = lg.newText(errorFont)
+  self.loopStuckText:addf(loopStuckMessage, self.windowWidth - self.openLoopCodeButton.width - 5, "left")
 end
 
 function playtest:objectPcall(func, obj, ...)
@@ -117,7 +135,10 @@ function playtest:callEvent(event, ...)
   for i = 1, maxLoopYields do
     local success, result = coroutine.resume(co, ...)
     if success then
-      if result ~= "loop" then
+      local loopLine = result:match("loop (%d+)")
+      if loopLine then
+        self.loopStuckLine = tonumber(loopLine)
+      else
         stillInLoop = false
         break
       end
@@ -137,21 +158,36 @@ end
 
 function playtest:mousepressed(x, y, b)
   if self.error then
-    self.openCodeButton:mousepressed(x, y, b)
+    self.openErrorCodeButton:mousepressed(x, y, b)
+    return
+  end
+
+  if self.showLoopMessage then
+    self.openLoopCodeButton:mousepressed(x, y, b)
     return
   end
 end
 
 function playtest:mousereleased(x, y, b)
   if self.error then
-    self.openCodeButton:mousereleased(x, y, b)
+    self.openErrorCodeButton:mousereleased(x, y, b)
+    return
+  end
+
+  if self.showLoopMessage then
+    self.openLoopCodeButton:mousereleased(x, y, b)
     return
   end
 end
 
 function playtest:mousemoved(x, y, dx, dy)
   if self.error then
-    self.openCodeButton:mousemoved(x, y, dx, dy)
+    self.openErrorCodeButton:mousemoved(x, y, dx, dy)
+    return
+  end
+
+  if self.showLoopMessage then
+    self.openLoopCodeButton:mousemoved(x, y, dx, dy)
     return
   end
 end
@@ -165,7 +201,8 @@ function playtest:update(dt)
 
   self:callEvent("update", dt)
 
-  if self.loopStuckCoroutine and not self.showLoopMessage and love.timer.getTime() - self.loopStuckTime >= loopStuckWaitTime then
+  if self.loopStuckCoroutine and not self.showLoopMessage and
+      love.timer.getTime() - self.loopStuckTime >= loopStuckWaitTime then
     self.showLoopMessage = true
   end
 end
@@ -183,10 +220,10 @@ function playtest:draw()
 
   if self.showLoopMessage then
     lg.setColor(0, 0, 0, 0.8)
-    lg.rectangle("fill", 0, 0, errorFont:getWidth(loopStuckMessage), errorFont:getHeight())
+    lg.rectangle("fill", 0, 0, self.windowWidth, self.topBarHeight)
     lg.setColor(1, 1, 1)
-    lg.setFont(errorFont)
-    lg.print(loopStuckMessage, 0, 0)
+    lg.draw(self.loopStuckText, 0, self.topBarHeight / 2 - self.loopStuckText:getHeight() / 2)
+    self.openLoopCodeButton:draw()
   end
 
   if self.error then
@@ -197,7 +234,7 @@ function playtest:draw()
     lg.print("Error:", 50, 50)
     lg.setFont(errorFont)
     lg.printf(self.error, 50, 60 + errorTitleFont:getHeight(), self.windowWidth - 80, "left")
-    self.openCodeButton:draw()
+    self.openErrorCodeButton:draw()
   end
 end
 
