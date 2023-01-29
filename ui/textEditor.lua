@@ -6,7 +6,6 @@ local table = table
 local math = math
 
 local baseButton   = require "ui.baseButton"
-local syntaxColors = require "ui.syntaxColors"
 local clamp        = require "util.clamp"
 local split        = require "util.split"
 local unorderedSet = require "util.unorderedSet"
@@ -47,6 +46,8 @@ local autoIndentPatterns = {
 
 local underlineImage = lg.newImage("images/squiggleUnderline.png")
 underlineImage:setWrap("repeat")
+
+local white = { 1, 1, 1 }
 
 local editor = setmetatable({}, baseButton)
 editor.__index = editor
@@ -101,132 +102,137 @@ function editor:updateLine(i)
   local line = self.lines[i]
   line.text:clear()
 
-  line.multilineEnd = false
+  if self.syntaxColors then
+    line.multilineEnd = false
 
-  local lastX = 0
-  local j = 1
+    local lastX = 0
+    local j = 1
 
-  if i > 1 then
-    if self.lines[i - 1].multilineAffected then
-      line.multilineAffected = self.lines[i - 1].multilineAffected
+    if i > 1 then
+      if self.lines[i - 1].multilineAffected then
+        line.multilineAffected = self.lines[i - 1].multilineAffected
 
-      while j <= #line.string do
+        while j <= #line.string do
 
-        local char = line.string:sub(j, j)
-        line.text:add({ line.multilineAffected, char }, lastX)
-        lastX = lastX + self.font:getWidth(char)
-        j = j + 1
+          local char = line.string:sub(j, j)
+          line.text:add({ line.multilineAffected, char }, lastX)
+          lastX = lastX + self.font:getWidth(char)
+          j = j + 1
 
-        if line.string:sub(j - #multilineEnd, j - 1) == multilineEnd then
-          line.multilineAffected = nil
-          line.multilineEnd = true
-          break
+          if line.string:sub(j - #multilineEnd, j - 1) == multilineEnd then
+            line.multilineAffected = nil
+            line.multilineEnd = true
+            break
+          end
         end
+      else
+        line.multilineAffected = nil
       end
-    else
-      line.multilineAffected = nil
     end
-  end
 
-  local foundMultilineStart = false
+    local foundMultilineStart = false
 
-  while j <= #line.string do
+    while j <= #line.string do
 
-    local char = line.string:sub(j, j)
+      local char = line.string:sub(j, j)
 
-    if char == '"' or char == "'" then
+      if char == '"' or char == "'" then
 
-      local stringStart = char
-      local stringContent = ""
-      repeat
+        local stringStart = char
+        local stringContent = ""
+        repeat
+          stringContent = stringContent .. line.string:sub(j, j)
+          j = j + 1
+        until (line.string:sub(j, j) == stringStart and line.string:sub(j - 1, j - 1) ~= "\\") or j >= #line.string
+
         stringContent = stringContent .. line.string:sub(j, j)
         j = j + 1
-      until (line.string:sub(j, j) == stringStart and line.string:sub(j - 1, j - 1) ~= "\\") or j >= #line.string
 
-      stringContent = stringContent .. line.string:sub(j, j)
-      j = j + 1
+        line.text:add({ self.syntaxColors.string, stringContent }, lastX)
+        lastX = lastX + self.font:getWidth(stringContent)
+        goto foundword
 
-      line.text:add({ syntaxColors.string, stringContent }, lastX)
-      lastX = lastX + self.font:getWidth(stringContent)
-      goto foundword
+      elseif char:find("%d") and not line.string:sub(j - 1, j - 1):find("[%w]") then
 
-    elseif char:find("%d") and not line.string:sub(j - 1, j - 1):find("[%w]") then
+        local numberContent = ""
+        repeat
+          numberContent = numberContent .. line.string:sub(j, j)
+          j = j + 1
+        until (line.string:sub(j, j):find("[^%w%+%.]")) or j > #line.string
 
-      local numberContent = ""
-      repeat
-        numberContent = numberContent .. line.string:sub(j, j)
-        j = j + 1
-      until (line.string:sub(j, j):find("[^%w%+%.]")) or j > #line.string
+        line.text:add({ self.syntaxColors.number, numberContent }, lastX)
+        lastX = lastX + self.font:getWidth(numberContent)
+        goto foundword
 
-      line.text:add({ syntaxColors.number, numberContent }, lastX)
-      lastX = lastX + self.font:getWidth(numberContent)
-      goto foundword
+      elseif line.string:sub(j, j + 1) == "[[" or line.string:sub(j, j + 3) == "--[[" then
 
-    elseif line.string:sub(j, j + 1) == "[[" or line.string:sub(j, j + 3) == "--[[" then
+        foundMultilineStart = true
+        line.hasMultilineStart = true
 
-      foundMultilineStart = true
-      line.hasMultilineStart = true
+        local isComment = line.string:sub(j, j + 1) == "--"
+        local color = isComment and self.syntaxColors.comment or self.syntaxColors.string
 
-      local isComment = line.string:sub(j, j + 1) == "--"
-      local color = isComment and syntaxColors.comment or syntaxColors.string
+        line.multilineAffected = color
 
-      line.multilineAffected = color
+        local contents = ""
 
-      local contents = ""
+        local foundClose = false
 
-      local foundClose = false
+        while j <= #line.string do
+          contents = contents .. line.string:sub(j, j)
+          j = j + 1
+          if line.string:sub(j - #multilineEnd, j - 1) == "]]" then
+            foundClose = true
+            line.multilineAffected = nil
+            break
+          end
+        end
 
-      while j <= #line.string do
-        contents = contents .. line.string:sub(j, j)
-        j = j + 1
-        if line.string:sub(j - #multilineEnd, j - 1) == "]]" then
-          foundClose = true
-          line.multilineAffected = nil
-          break
+        line.text:add({ color, contents }, lastX)
+        lastX = lastX + self.font:getWidth(contents)
+
+        goto foundword
+
+      elseif line.string:sub(j, j + 1) == "//" then
+
+        local commentContent = ""
+        while j <= #line.string do
+          commentContent = commentContent .. line.string:sub(j, j)
+          j = j + 1
+        end
+
+        line.text:add({ self.syntaxColors.comment, commentContent }, lastX)
+        lastX = lastX + self.font:getWidth(commentContent)
+
+        goto foundword
+      end
+
+      for word, color in pairs(self.syntaxColors.words) do
+        if line.string:sub(j, j + #word - 1) == word and not line.string:sub(j + #word, j + #word):find("[%w]") and
+            not line.string:sub(j - 1, j - 1):find("[%w]") then
+          line.text:add({ color, word }, lastX)
+          lastX = lastX + self.font:getWidth(word)
+          j = j + #word
+          goto foundword
         end
       end
 
-      line.text:add({ color, contents }, lastX)
-      lastX = lastX + self.font:getWidth(contents)
+      line.text:add({ self.syntaxColors.identifier, char }, lastX)
+      lastX = lastX + self.font:getWidth(char)
 
-      goto foundword
-
-    elseif line.string:sub(j, j + 1) == "//" then
-
-      local commentContent = ""
-      while j <= #line.string do
-        commentContent = commentContent .. line.string:sub(j, j)
-        j = j + 1
-      end
-
-      line.text:add({ syntaxColors.comment, commentContent }, lastX)
-      lastX = lastX + self.font:getWidth(commentContent)
-
-      goto foundword
+      j = j + 1
+      ::foundword::
     end
 
-    for word, color in pairs(syntaxColors.words) do
-      if line.string:sub(j, j + #word - 1) == word and not line.string:sub(j + #word, j + #word):find("[%w]") and
-          not line.string:sub(j - 1, j - 1):find("[%w]") then
-        line.text:add({ color, word }, lastX)
-        lastX = lastX + self.font:getWidth(word)
-        j = j + #word
-        goto foundword
-      end
+    line.totalWidth = lastX
+
+    if not foundMultilineStart and line.hasMultilineStart then
+      line.hasMultilineStart = false
+      line.multilineAffected = nil
     end
-
-    line.text:add({ syntaxColors.identifier, char }, lastX)
-    lastX = lastX + self.font:getWidth(char)
-
-    j = j + 1
-    ::foundword::
-  end
-
-  line.totalWidth = lastX
-
-  if not foundMultilineStart and line.hasMultilineStart then
-    line.hasMultilineStart = false
-    line.multilineAffected = nil
+  else
+    line.text:add(line.string)
+    line.totalWidth = line.text:getWidth()
   end
 
   if i < #self.lines and
@@ -400,16 +406,18 @@ function editor:keypressed(k)
   elseif self.multiline and (k == "return" or k == "kpenter") then
     if self.selecting then self:eraseSelection() end
     self:newLine(true)
-    for _, p in ipairs(autoIndentPatterns) do
-      if self.lines[self.cursor.line - 1].string:match(p) then
-        self.lines[self.cursor.line].string = (" "):rep(self.tabSize) .. self:curLine()
-        self.cursor.col = self.cursor.col + self.tabSize
-        self:updateLine()
-        break
+    if self.autoIndent then
+      for _, p in ipairs(autoIndentPatterns) do
+        if self.lines[self.cursor.line - 1].string:match(p) then
+          self.lines[self.cursor.line].string = (" "):rep(self.tabSize) .. self:curLine()
+          self.cursor.col = self.cursor.col + self.tabSize
+          self:updateLine()
+          break
+        end
       end
     end
     self:flick()
-  elseif k == "tab" then
+  elseif k == "tab" and self.indentOnTab then
     self:inputText((" "):rep(self.tabSize))
   elseif k == "backspace" then
     if self.selecting then
@@ -453,11 +461,13 @@ function editor:keypressed(k)
   elseif k == "a" and ctrlDown then
     self:selectAll()
   end
-  for _, m in ipairs(macros) do
-    if m.triggerKey == k and m.condition(self) then
-      m.action(self)
-      self.lastText = ""
-      return
+  if self.useMacros then
+    for _, m in ipairs(macros) do
+      if m.triggerKey == k and m.condition(self) then
+        m.action(self)
+        self.lastText = ""
+        return
+      end
     end
   end
   self.lastText = ""
@@ -665,12 +675,12 @@ function editor:draw()
         lg.rectangle("fill", startX, dy, endX - startX, self.font:getHeight())
       end
     end
-    lg.setColor(1, 1, 1)
+    lg.setColor(self.syntaxColors and white or self.textColor)
     lg.draw(l.text, 0, dy)
   end
 
   if math.floor(love.timer.getTime() * self.flickSpeed - self.flickTime) % 2 == 0 then
-    lg.setColor(syntaxColors.identifier)
+    lg.setColor(self.syntaxColors.identifier)
     lg.setLineStyle("rough")
     lg.setLineWidth(cursorWidth)
     local dx, dy = self:getScreenCursorPosition()

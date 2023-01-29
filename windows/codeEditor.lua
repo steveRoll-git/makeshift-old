@@ -27,7 +27,13 @@ end
 function codeEditor:init(targetObject)
   self.targetObject = targetObject
   self.text = targetObject.code or ""
+
   self.editor = textEditor.new(0, 0, 100, 100, font, true, self.text)
+  self.editor.syntaxColors = require "ui.syntaxColors"
+  self.editor.indentOnTab = true
+  self.editor.autoIndent = true
+  self.editor.useMacros = true
+  
   self.scrollbarY = scrollbar.new("y", function()
     self.editor.textY = textEditor.textPadding -
         self.scrollbarY.scrollY / (self.scrollbarY.height - self.scrollbarY.scrollHeight) *
@@ -39,6 +45,7 @@ function codeEditor:init(targetObject)
   end)
   self.scrollY = 0
   self.scrollX = 0
+  
   -- how long to wait after no input before doing a syntax check
   self.inactivityInterval = 0.5
   self.lastActivityTime = love.timer.getTime()
