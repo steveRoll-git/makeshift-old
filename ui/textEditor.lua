@@ -55,10 +55,11 @@ editor.__index = editor
 editor.textPadding = defaultTextPadding
 editor.doubleClickTime = 0.5
 
-function editor.new(x, y, w, h, font, multiline, text)
+function editor.new(x, y, w, h, font, multiline, text, syntaxColors)
   font = font or lg.getFont()
   local obj = setmetatable(baseButton.new(x, y, w, h), editor)
   obj.font = font
+  obj.syntaxColors = syntaxColors
   if text then
     obj.lines = {}
     for l in split(text, "\n") do

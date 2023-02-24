@@ -28,8 +28,7 @@ function codeEditor:init(targetObject)
   self.targetObject = targetObject
   self.text = targetObject.code or ""
 
-  self.editor = textEditor.new(0, 0, 100, 100, font, true, self.text)
-  self.editor.syntaxColors = require "ui.syntaxColors"
+  self.editor = textEditor.new(0, 0, 100, 100, font, true, self.text, require "ui.syntaxColors")
   self.editor.indentOnTab = true
   self.editor.autoIndent = true
   self.editor.useMacros = true
