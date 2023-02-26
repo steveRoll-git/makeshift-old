@@ -1,11 +1,16 @@
 local orderedSet = {}
 orderedSet.__index = orderedSet
 
-function orderedSet.new()
+function orderedSet.new(elements)
   local self = setmetatable({}, orderedSet)
   self.lookup = {}
   self.list = {}
   self.count = 0
+  if elements then
+    for i, e in ipairs(elements) do
+      self:add(e)
+    end
+  end
   return self
 end
 

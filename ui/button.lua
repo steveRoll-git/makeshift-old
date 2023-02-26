@@ -1,56 +1,24 @@
 local love = love
 local lg = love.graphics
 
+local baseButton = require "ui.baseButton"
+
 local defaultFont = love.graphics.newFont(FontName, 14)
 
-local button = {}
+local button = setmetatable({}, baseButton)
 button.__index = button
 
-button.font = font
 button.cornerSize = 4
 
 function button.new(x, y, width, height, text, onClick, font)
-  local self = setmetatable({}, button)
-  self:init(x, y, width, height, text, onClick, font)
+  local self = setmetatable(baseButton.new(x, y, width, height, onClick), button)
+  self:init(text, font)
   return self
 end
 
-function button:init(x, y, width, height, text, onClick, font)
-  self.x = x
-  self.y = y
-  self.width = width
-  self.height = height
+function button:init(text, font)
   self.text = text
-  self.onClick = onClick
-  self.enabled = true
   self.font = font or defaultFont
-end
-
-function button:inside(x, y)
-  return x >= self.x and x < self.x + self.width and y >= self.y and y < self.y + self.height
-end
-
-function button:mousemoved(x, y, dx, dy)
-  local prev = self.over
-  self.over = self:inside(x, y)
-  if self.over and not prev and self.onOver then
-    self:onOver()
-  end
-end
-
-function button:mousepressed(x, y, b)
-  if b == 1 and self:inside(x, y) then
-    self.down = true
-  end
-end
-
-function button:mousereleased(x, y, b)
-  if b == 1 then
-    if self.down and self:inside(x, y) then
-      if self.enabled and self.onClick then self.onClick() end
-    end
-    self.down = false
-  end
 end
 
 function button:draw()
@@ -59,19 +27,19 @@ function button:draw()
   if self.outline ~= false then
     lg.setLineWidth(1)
     lg.setColor(1, 1, 1)
-    lg.rectangle("line", 0, 0, self.width, self.height, 4)
+    lg.rectangle("line", 0, 0, self.w, self.h, 4)
   end
   if self.down and self.enabled then
     lg.setColor(1, 1, 1, 0.4)
-    lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)
+    lg.rectangle("fill", 0, 0, self.w, self.h, button.cornerSize)
   elseif self.over then
     lg.setColor(1, 1, 1, self.enabled and 0.2 or 0.1)
-    lg.rectangle("fill", 0, 0, self.width, self.height, button.cornerSize)
+    lg.rectangle("fill", 0, 0, self.w, self.h, button.cornerSize)
   end
   lg.setFont(self.font)
   local c = self.enabled and 1 or 0.4
   lg.setColor(c, c, c, 1)
-  lg.printf(self.text, button.cornerSize, self.height / 2 - self.font:getHeight() / 2, self.width - button.cornerSize * 2,
+  lg.printf(self.text, button.cornerSize, self.h / 2 - self.font:getHeight() / 2, self.w - button.cornerSize * 2,
     self.textAlign or "center")
   lg.pop()
 end

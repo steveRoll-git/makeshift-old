@@ -77,9 +77,9 @@ end
 
 function colorPicker:buttonLayout()
   self.okButton.x = 10
-  self.okButton.y = self.windowHeight - self.okButton.height - 10
+  self.okButton.y = self.windowHeight - self.okButton.h - 10
 
-  self.cancelButton.x = self.okButton.x + self.okButton.width + 10
+  self.cancelButton.x = self.okButton.x + self.okButton.w + 10
   self.cancelButton.y = self.okButton.y
 end
 

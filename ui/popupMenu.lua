@@ -44,7 +44,7 @@ function popupMenu:init(items, x, y, width)
         new.enabled = item.enabled()
       end
       table.insert(self.buttons, new)
-      buttonY = buttonY + new.height
+      buttonY = buttonY + new.h
     end
   end
   self.height = buttonY

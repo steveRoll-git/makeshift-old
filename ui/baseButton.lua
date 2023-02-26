@@ -7,7 +7,7 @@ local baseButton = {}
 baseButton.__index = baseButton
 
 function baseButton.new(x, y, w, h, onClick)
-  local obj = setmetatable({x = x, y = y, w = w, h = h, over = false, down = false, focused = false, onClick = onClick}, baseButton)
+  local obj = setmetatable({x = x, y = y, w = w, h = h, over = false, down = false, focused = false, enabled = true, onClick = onClick}, baseButton)
   return obj
 end
 
@@ -18,7 +18,7 @@ end
 function baseButton:mousemoved(x, y, dx, dy)
   local pover = self.over
   self.over = self:isOver(x, y)
-  if self.over ~= pover then
+  if self.over ~= pover and self.enabled then
     if self.over and self.onOver then
       self:onOver()
     elseif not self.over and not self.down and self.onOut then
@@ -31,19 +31,19 @@ end
 function baseButton:mousepressed(x, y, b)
   if b == 1 and self:isOver(x, y) then
     self.down = true
-    if self.onDown then self:onDown(x, y, b) end
+    if self.onDown and self.enabled then self:onDown(x, y, b) end
     return self
   end
 end
 
 function baseButton:mousereleased(x, y, b)
   if b == 1 and self.down and self:isOver(x, y) then
-    if self.onClick then self:onClick(x, y, b) end
-  elseif b == 2 and self.onRightClick and self:isOver(x, y) then
+    if self.onClick and self.enabled then self:onClick(x, y, b) end
+  elseif b == 2 and self.onRightClick and self.enabled and self:isOver(x, y) then
     self:onRightClick(x, y)
   end
   self.down = false
-  if self.onRelease then self:onRelease(x, y, b) end
+  if self.onRelease and self.enabled then self:onRelease(x, y, b) end
 end
 
 function baseButton:getRoot()

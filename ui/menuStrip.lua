@@ -31,7 +31,7 @@ function menuStrip:init(buttons)
     )
     theButton.outline = false
     theButton.openMyMenu = function()
-      OpenPopupMenu(b.items, self.window.x + theButton.x - 3, self.window.y + self.window.titleBarHeight + theButton.height)
+      OpenPopupMenu(b.items, self.window.x + theButton.x - 3, self.window.y + self.window.titleBarHeight + theButton.h)
       SetActiveMenuStrip(self)
     end
     theButton.onClick = function()
@@ -47,7 +47,7 @@ function menuStrip:init(buttons)
         theButton.openMyMenu()
       end
     end
-    lastX = lastX + theButton.width
+    lastX = lastX + theButton.w
     table.insert(self.buttons, theButton)
   end
   self.height = height
