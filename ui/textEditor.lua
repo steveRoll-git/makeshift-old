@@ -85,6 +85,7 @@ function editor.new(x, y, w, h, font, multiline, text, syntaxColors)
   obj.stencilFunc = function()
     lg.rectangle("fill", 0, 0, obj.w, obj.h)
   end
+  obj.keyboardFocus = true
   return obj
 end
 
@@ -676,12 +677,12 @@ function editor:draw()
         lg.rectangle("fill", startX, dy, endX - startX, self.font:getHeight())
       end
     end
-    lg.setColor(self.syntaxColors and white or self.textColor)
+    lg.setColor(self.textColor or white)
     lg.draw(l.text, 0, dy)
   end
 
-  if math.floor(love.timer.getTime() * self.flickSpeed - self.flickTime) % 2 == 0 then
-    lg.setColor(self.syntaxColors.identifier)
+  if self.focused and math.floor(love.timer.getTime() * self.flickSpeed - self.flickTime) % 2 == 0 then
+    lg.setColor(self.syntaxColors and self.syntaxColors.identifier or white)
     lg.setLineStyle("rough")
     lg.setLineWidth(cursorWidth)
     local dx, dy = self:getScreenCursorPosition()
@@ -692,6 +693,12 @@ function editor:draw()
   lg.pop()
   PopStencil(self.stencilFunc)
   lg.pop()
+
+  if self.drawBorder then
+    lg.setColor(white)
+    lg.setLineWidth(1)
+    lg.rectangle("line", self.x, self.y, self.w, self.h, 3)
+  end
 end
 
 function editor:getPrevWord(i)

@@ -50,6 +50,12 @@ function orderedSet:remove(item)
   self.count = self.count - 1
 end
 
+function orderedSet:getIndex(item)
+  assert(self.lookup[item], "item is not in the set")
+  
+  return self.lookup[item]
+end
+
 function orderedSet:last()
   return self.list[self.count]
 end

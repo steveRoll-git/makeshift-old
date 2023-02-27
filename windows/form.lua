@@ -14,8 +14,29 @@ function form:init(title, width, height, elements)
   self.title = title
   self.width = width
   self.height = height
-  self.elements = orderedSet.new(elements)
+  self.elements = orderedSet.new()
+  for _, e in ipairs(elements) do
+    self:addElement(e)
+  end
   self.mouseButtonsDown = {}
+end
+
+function form:setFocusedElement(e)
+  if self.currentKeyboardFocus then
+    self.currentKeyboardFocus.focused = false
+  end
+  e.focused = true
+  self.currentKeyboardFocus = e
+  if e.onFocus then
+    e:onFocus()
+  end
+end
+
+function form:addElement(e)
+  self.elements:add(e)
+  if e.keyboardFocus and not self.currentKeyboardFocus then
+    self:setFocusedElement(e)
+  end
 end
 
 function form:mousepressed(x, y, b)
@@ -24,6 +45,9 @@ function form:mousepressed(x, y, b)
       e:mousepressed(x, y, b)
       self.elementDown = e
       self.mouseButtonsDown[b] = true
+      if e.keyboardFocus then
+        self:setFocusedElement(e)
+      end
       break
     end
   end
@@ -47,6 +71,28 @@ function form:mousemoved(x, y, dx, dy)
   end
   for _, e in ipairs(self.elements.list) do
     e:mousemoved(x, y, dx, dy)
+  end
+end
+
+function form:keypressed(key)
+  if key == "tab" then
+    for i = self.currentKeyboardFocus and self.elements:getIndex(self.currentKeyboardFocus) + 1 or 1, self.elements.count do
+      local e = self.elements.list[i]
+      if e.keyboardFocus then
+        self:setFocusedElement(e)
+        break
+      end
+    end
+  else
+    if self.currentKeyboardFocus then
+      self.currentKeyboardFocus:keypressed(key)
+    end
+  end
+end
+
+function form:textinput(t)
+  if self.currentKeyboardFocus then
+    self.currentKeyboardFocus:textinput(t)
   end
 end
 

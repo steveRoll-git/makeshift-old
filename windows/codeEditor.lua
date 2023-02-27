@@ -32,6 +32,7 @@ function codeEditor:init(targetObject)
   self.editor.indentOnTab = true
   self.editor.autoIndent = true
   self.editor.useMacros = true
+  self.editor.focused = true
   
   self.scrollbarY = scrollbar.new("y", function()
     self.editor.textY = textEditor.textPadding -
