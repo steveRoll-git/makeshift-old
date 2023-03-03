@@ -212,10 +212,25 @@ function GetObjectById(id)
   return objectsById[id]
 end
 
-local function openObjectImageEditor(object)
-  local windowId = "image " .. object.id
+-- opens a window that is related to this object, and creates it
+-- with `createFunc` if it doesn't exist yet
+local function openObjectWindow(object, windowKind, createFunc)
+  local windowId = ("%s %s"):format(windowKind, object.id)
   local theWindow = windowsById[windowId]
   if not theWindow then
+    theWindow = createFunc()
+    theWindow.id = windowId
+    AddWindow(theWindow)
+  end
+  local screenX, screenY = worldToScreen(object.x, object.y)
+  theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
+  theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
+  bringWindowToTop(theWindow)
+  return theWindow
+end
+
+local function openObjectImageEditor(object)
+  return openObjectWindow(object, "image", function()
     local editor = imageEditor.new(object.imageData)
     editor.onPaint = function(data)
       object.imageData = data
@@ -227,24 +242,15 @@ local function openObjectImageEditor(object)
         object.image:replacePixels(data)
       end
     end
-    theWindow = editor:window(0, 0)
-    theWindow.id = windowId
-    AddWindow(theWindow)
-  end
-  local screenX, screenY = worldToScreen(object.x, object.y)
-  theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
-  theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
-  bringWindowToTop(theWindow)
+    return editor:window(0, 0)
+  end)
 end
 
 function OpenObjectCodeEditor(object)
-  local windowId = "code " .. object.id
-  local theWindow = windowsById[windowId]
-  if not theWindow then
+  return openObjectWindow(object, "code", function()
     local editor = codeEditor.new(object)
-    theWindow = editor:window(0, 0)
-    theWindow.id = windowId
-    AddWindow(theWindow)
+    return editor:window(0, 0)
+  end)
   end
   local screenX, screenY = worldToScreen(object.x, object.y)
   theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
