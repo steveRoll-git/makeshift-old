@@ -76,13 +76,17 @@ end
 
 function form:keypressed(key)
   if key == "tab" then
-    for i = self.currentKeyboardFocus and self.elements:getIndex(self.currentKeyboardFocus) + 1 or 1, self.elements.count do
+    local i = self.currentKeyboardFocus and self.elements:getIndex(self.currentKeyboardFocus) or 1
+    local start = i
+    local direction = love.keyboard.isDown("lshift", "rshift") and -1 or 1
+    repeat
+      i = (i + direction - 1) % #self.elements.list + 1
       local e = self.elements.list[i]
       if e.keyboardFocus then
         self:setFocusedElement(e)
         break
       end
-    end
+    until i == start
   else
     if self.currentKeyboardFocus then
       self.currentKeyboardFocus:keypressed(key)
