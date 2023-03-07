@@ -554,7 +554,11 @@ function editor:onFocus()
 end
 
 function editor:onLoseFocus()
-  --self.selecting = false
+  self.selecting = false
+end
+
+function editor:onKeyboardFocus()
+  self:selectAll()
 end
 
 function editor:onRightClick()

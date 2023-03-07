@@ -21,14 +21,20 @@ function form:init(title, width, height, elements)
   self.mouseButtonsDown = {}
 end
 
-function form:setFocusedElement(e)
+function form:setFocusedElement(e, fromKeyboard)
   if self.currentKeyboardFocus then
     self.currentKeyboardFocus.focused = false
+    if self.currentKeyboardFocus.onLoseFocus then
+      self.currentKeyboardFocus:onLoseFocus()
+    end
   end
   e.focused = true
   self.currentKeyboardFocus = e
   if e.onFocus then
     e:onFocus()
+  end
+  if fromKeyboard and e.onKeyboardFocus then
+    e:onKeyboardFocus()
   end
 end
 
@@ -83,7 +89,7 @@ function form:keypressed(key)
       i = (i + direction - 1) % #self.elements.list + 1
       local e = self.elements.list[i]
       if e.keyboardFocus then
-        self:setFocusedElement(e)
+        self:setFocusedElement(e, true)
         break
       end
     until i == start
