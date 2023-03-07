@@ -98,7 +98,7 @@ function playtest:init(game)
   end, errorFont)
 
   self.loopStuckText = lg.newText(errorFont)
-  self.loopStuckText:addf(loopStuckMessage, self.windowWidth - self.openLoopCodeButton.width - 5, "left")
+  self.loopStuckText:addf(loopStuckMessage, self.windowWidth - self.openLoopCodeButton.w - 5, "left")
 end
 
 function playtest:objectPcall(func, obj, ...)
