@@ -126,6 +126,8 @@ local function closeWindow(which)
 end
 
 function AddWindow(w)
+  w.x = math.floor(w.x)
+  w.y = math.floor(w.y)
   w.canvas = lg.newCanvas(w.width, w.height)
   lg.setCanvas({ w.canvas, stencil = true })
   w:draw()
