@@ -253,12 +253,6 @@ function OpenObjectCodeEditor(object)
     local editor = codeEditor.new(object)
     return editor:window(0, 0)
   end)
-  end
-  local screenX, screenY = worldToScreen(object.x, object.y)
-  theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
-  theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
-  bringWindowToTop(theWindow)
-  return theWindow
 end
 
 local function parseObjectCode(code)
