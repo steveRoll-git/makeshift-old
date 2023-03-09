@@ -1,9 +1,13 @@
 local insertAll = require "util.insertAll"
 
-local translateOperators = {
+local translateBinaryOperators = {
   ["!="] = "~=",
   ["&&"] = "and",
   ["||"] = "or",
+}
+
+local translateUnaryOperators = {
+  ["!"] = "not",
 }
 
 local output = {}
@@ -123,7 +127,7 @@ end
 
 function output.unaryOperator(tree)
   local result = {}
-  table.insert(result, { string = tree.operator, line = tree.line })
+  table.insert(result, { string = translateUnaryOperators[tree.operator] or tree.operator, line = tree.line })
   insertAll(result, translate(tree.value))
   return result
 end
@@ -136,7 +140,7 @@ function output.binaryOperator(tree)
   lhs[#lhs].string = lhs[#lhs].string .. ")"
   insertAll(result, lhs)
 
-  table.insert(result, { string = translateOperators[tree.operator] or tree.operator, line = tree.line })
+  table.insert(result, { string = translateBinaryOperators[tree.operator] or tree.operator, line = tree.line })
 
   local rhs = translate(tree.rhs)
   rhs[1].string = "(" .. rhs[1].string
