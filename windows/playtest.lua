@@ -153,6 +153,7 @@ function playtest:callEvent(event, ...)
   else
     self.loopStuckCoroutine = nil
     self.showLoopMessage = false
+    self.loopStuckTime = nil
   end
 end
 
