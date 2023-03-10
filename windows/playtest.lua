@@ -35,6 +35,8 @@ function playtest.new(game)
 end
 
 function playtest:init(game)
+  self.environment = self:createEnvironment()
+
   self.objects = {}
   for _, obj in ipairs(game.objects) do
     local actual = {
@@ -47,6 +49,9 @@ function playtest:init(game)
       sourceMap = obj.sourceMap,
       id = obj.id,
     }
+    for _, func in pairs(actual.events) do
+      setfenv(func, self.environment)
+    end
     local instance = objectType:instance(actual)
     actual._instance = instance
     table.insert(self.objects, actual)
@@ -99,6 +104,18 @@ function playtest:init(game)
 
   self.loopStuckText = lg.newText(errorFont)
   self.loopStuckText:addf(loopStuckMessage, self.windowWidth - self.openLoopCodeButton.w - 5, "left")
+end
+
+function playtest:createEnvironment()
+  return {
+    keyDown = function (key)
+      local success, result = pcall(love.keyboard.isDown, key)
+      if not success then
+        error(("%q is not a valid key"):format(key), 2)
+      end
+      return result
+    end
+  }
 end
 
 function playtest:objectPcall(func, obj, ...)
