@@ -148,6 +148,7 @@ function playtest:callEvent(event, ...)
     return
   end
 
+  -- TODO make this code differentiate nested loops
   local stillInLoop = true
   for i = 1, maxLoopYields do
     local success, result = coroutine.resume(co, ...)
