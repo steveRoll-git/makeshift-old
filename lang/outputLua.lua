@@ -54,14 +54,14 @@ function output.functionCall(tree)
 
   insertAll(result, translate(tree.object))
   result[#result].appendNewline = false
-  table.insert(result, { string = "(" })
+  table.insert(result, { string = "(", line = tree.line })
   for i, p in ipairs(tree.params) do
     insertAll(result, translate(p))
     if i < #tree.params then
       table.insert(result, { string = "," })
     end
   end
-  table.insert(result, { string = ")", line = tree.line })
+  table.insert(result, { string = ")" })
 
   return result
 end
