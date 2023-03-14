@@ -108,7 +108,8 @@ end
 
 function playtest:createEnvironment()
   return {
-    keyDown = function (key)
+    _yield = coroutine.yield,
+    keyDown = function(key)
       local success, result = pcall(love.keyboard.isDown, key)
       if not success then
         error(("%q is not a valid key"):format(key), 2)
