@@ -34,27 +34,6 @@ end
 function playtest:init(game)
   self.environment = self:createEnvironment()
 
-  self.objects = unorderedSet.new()
-  for _, obj in ipairs(game.objects) do
-    local actual = {
-      x = obj.x,
-      y = obj.y,
-      mouseOver = false,
-      mouseDown = false,
-      width = obj.width,
-      height = obj.height,
-      image = obj.image,
-      events = obj.events,
-      sourceMap = obj.sourceMap,
-      id = obj.id,
-    }
-    for _, func in pairs(actual.events) do
-      setfenv(func, self.environment)
-    end
-    local instance = objectType:instance(actual)
-    actual._instance = instance
-    self.objects:add(actual)
-  end
   self.cameraX = 0
   self.cameraY = 0
   self.windowWidth = game.windowWidth
@@ -103,6 +82,28 @@ function playtest:init(game)
 
   self.loopStuckText = lg.newText(errorFont)
   self.loopStuckText:addf(loopStuckMessage, self.windowWidth - self.openLoopCodeButton.w - 5, "left")
+
+  self.objects = unorderedSet.new()
+  for _, obj in ipairs(game.objects) do
+    local actual = {
+      x = obj.x,
+      y = obj.y,
+      mouseOver = false,
+      mouseDown = false,
+      width = obj.width,
+      height = obj.height,
+      image = obj.image,
+      events = obj.events,
+      sourceMap = obj.sourceMap,
+      id = obj.id,
+    }
+    for _, func in pairs(actual.events) do
+      setfenv(func, self.environment)
+    end
+    local instance = objectType:instance(actual)
+    actual._instance = instance
+    self:addObject(actual)
+  end
 end
 
 function playtest:createEnvironment()
@@ -116,6 +117,11 @@ function playtest:createEnvironment()
       return result
     end
   }
+end
+
+function playtest:addObject(object)
+  self.objects:add(object)
+  self:callObjectEvent(object, "start")
 end
 
 function playtest:objectPcall(func, obj, ...)
