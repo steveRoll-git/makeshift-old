@@ -62,28 +62,25 @@ function playtest:init(game)
   self.windowHeight = game.windowHeight
   self.backgroundColor = game.backgroundColor
   self.running = true
-  
+
   self.topBarHeight = errorFont:getHeight() * 2
 
-  -- a separate coroutine is created for every event.
-  -- this is for when a user-code function is stuck in an infinite loop,
-  -- the `yield`s at the end of each loop can give control back to the playtest,
-  -- preventing the whole program from being stuck.
-  self.coroutines = {}
-  for _, event in ipairs(events) do
-    self.coroutines[event] = coroutine.create(function(...)
-      while true do
-        for _, obj in ipairs(self.objects) do
-          self.runningObject = obj
-          local f = obj.events[event]
-          if f then
-            self:objectPcall(f, obj, ...)
-          end
-        end
-        coroutine.yield("eventEnd")
+  -- this coroutine is responsible for running user code, which yields in loops.
+  -- this is needed in order to give back control to makeshift in case user code
+  -- runs in a loop and doesn't exit from it.
+  self.codeRunner = coroutine.create(function(...)
+    while true do
+      local object, event, p1, p2, p3, p4 = coroutine.yield("eventEnd")
+      local f = object.events[event]
+      if f then
+        self:objectPcall(f, object, p1, p2, p3, p4)
       end
-    end)
-  end
+    end
+  end)
+  coroutine.resume(self.codeRunner)
+
+  -- if an event fires while there's a stuck loop, it will be stored here and be run after the loop exits
+  self.pendingEvents = {}
 
   self.openErrorCodeButton = button.new(50, self.windowHeight - 100, 130, 35, "Go to code", function()
     local w = OpenObjectCodeEditor(GetObjectById(self.errorSource))
@@ -92,7 +89,7 @@ function playtest:init(game)
     w.content.editor:scrollIntoView()
     w.content:updateScrollbars()
   end, errorFont)
-  
+
   local h = errorFont:getHeight() * 1.5
   self.openLoopCodeButton = button.new(self.windowWidth - 140, topBarHeight / 2 - h / 2, 130, h, "Go to code", function()
     local w = OpenObjectCodeEditor(GetObjectById(self.runningObject.id))
@@ -136,30 +133,43 @@ function playtest:objectPcall(func, obj, ...)
 [unnamed object]
 Line %d:
 %s
-]]   ):format(actualLine, message)
+]]):format(actualLine, message)
     self.errorSource = source
     self.errorLine = actualLine
   end
 end
 
-function playtest:callEvent(event, ...)
-  local co = self.coroutines[event]
+-- runs the event runner either until it finishes the current event, or
+-- it runs a loop for more than a specified amount.
+--
+-- if parameters are given, it starts the runner with those parameters.
+function playtest:tryContinueRunner(object, event, p1, p2, p3, p4)
+  self.runningObject = object or self.runningObject
 
-  if self.loopStuckCoroutine and self.loopStuckCoroutine ~= co then
-    return
-  end
+  local stillInLoop = true
+
+  -- whether the initial call to `resume` was already done for this event
+  local ranInitial = not object
 
   -- TODO make this code differentiate nested loops
-  local stillInLoop = true
   for i = 1, maxLoopYields do
-    local success, result = coroutine.resume(co, ...)
+    local success, result
+    if not ranInitial then
+      ranInitial = true
+      success, result = coroutine.resume(self.codeRunner, object, event, p1, p2, p3, p4)
+    else
+      success, result = coroutine.resume(self.codeRunner)
+    end
     if success then
       local loopLine = result:match("loop (%d+)")
       if loopLine then
         self.loopStuckLine = tonumber(loopLine)
-      else
+      elseif result == "eventEnd" then
         stillInLoop = false
+        self.runningObject = nil
         break
+      else
+        error("unknown coroutine result? " .. result)
       end
     else
       error(result)
@@ -167,13 +177,25 @@ function playtest:callEvent(event, ...)
   end
 
   if stillInLoop then
-    self.loopStuckCoroutine = co
     self.loopStuckTime = self.loopStuckTime or love.timer.getTime()
+    self.stuckInLoop = true
   else
-    self.loopStuckCoroutine = nil
     self.showLoopMessage = false
     self.loopStuckTime = nil
+    self.stuckInLoop = false
   end
+end
+
+-- starts executing an object's method. it may finish running in the same call,
+-- but it may also enter a stuck loop from here.
+function playtest:callObjectEvent(object, event, p1, p2, p3, p4)
+  if self.stuckInLoop then
+    -- insert this event to be executed later, after the code exits the stuck loop
+    table.insert(self.pendingEvents, { object, event, p1, p2, p3, p4 })
+    return
+  end
+
+  self:tryContinueRunner(object, event, p1, p2, p3, p4)
 end
 
 function playtest:mousepressed(x, y, b)
@@ -219,9 +241,24 @@ end
 function playtest:update(dt)
   if not self.running then return end
 
-  self:callEvent("update", dt)
+  -- if the code is currently stuck in a loop, we only focus on trying to
+  -- complete it (one batch of tries every frame), and only run updates after it's finished
+  if self.stuckInLoop then
+    self:tryContinueRunner()
+  end
+  while not self.stuckInLoop and #self.pendingEvents > 0 do
+    self:callObjectEvent(unpack(table.remove(self.pendingEvents, 1)))
+  end
+  if not self.stuckInLoop then
+    -- finally, if we're not stuck in a loop anymore, run the update event for all objects.
+    for _, object in ipairs(self.objects) do
+      -- TODO decide whether to include deltatime or not
+      self:callObjectEvent(object, "update")
+    end
+  end
 
-  if self.loopStuckCoroutine and not self.showLoopMessage and
+  -- if enough time has passed since we got stuck in a loop, show the message
+  if self.stuckInLoop and not self.showLoopMessage and
       love.timer.getTime() - self.loopStuckTime >= loopStuckWaitTime then
     self.showLoopMessage = true
   end
