@@ -4,6 +4,7 @@ local lg = love.graphics
 local window = require "ui.window"
 local strongType = require "lang.strongType"
 local button = require "ui.button"
+local unorderedSet = require "util.unorderedSet"
 
 local errorTitleFont = lg.newFont(FontName, 42)
 local errorFont = lg.newFont(FontName, 24)
@@ -12,10 +13,6 @@ local objectType = strongType.new("object", {
   x = { type = "number" },
   y = { type = "number" },
 })
-
-local events = {
-  "update", "mousepressed", "mousereleased", "mousemoved", "keypressed"
-}
 
 -- the maximum amount of times to `yield` inside a loop before moving on.
 local maxLoopYields = 1000
@@ -37,11 +34,13 @@ end
 function playtest:init(game)
   self.environment = self:createEnvironment()
 
-  self.objects = {}
+  self.objects = unorderedSet.new()
   for _, obj in ipairs(game.objects) do
     local actual = {
       x = obj.x,
       y = obj.y,
+      mouseOver = false,
+      mouseDown = false,
       width = obj.width,
       height = obj.height,
       image = obj.image,
@@ -54,7 +53,7 @@ function playtest:init(game)
     end
     local instance = objectType:instance(actual)
     actual._instance = instance
-    table.insert(self.objects, actual)
+    self.objects:add(actual)
   end
   self.cameraX = 0
   self.cameraY = 0
@@ -62,6 +61,9 @@ function playtest:init(game)
   self.windowHeight = game.windowHeight
   self.backgroundColor = game.backgroundColor
   self.running = true
+
+  -- objects that the mouse pressed on
+  self.mouseDownObjects = {}
 
   self.topBarHeight = errorFont:getHeight() * 2
 
@@ -189,6 +191,10 @@ end
 -- starts executing an object's method. it may finish running in the same call,
 -- but it may also enter a stuck loop from here.
 function playtest:callObjectEvent(object, event, p1, p2, p3, p4)
+  if not object.events[event] then
+    return
+  end
+
   if self.stuckInLoop then
     -- insert this event to be executed later, after the code exits the stuck loop
     table.insert(self.pendingEvents, { object, event, p1, p2, p3, p4 })
@@ -196,6 +202,11 @@ function playtest:callObjectEvent(object, event, p1, p2, p3, p4)
   end
 
   self:tryContinueRunner(object, event, p1, p2, p3, p4)
+end
+
+function playtest:isMouseOverObject(x, y, object)
+  -- TODO adjust for camera position, object rotation and anchor point
+  return x >= object.x and x < object.x + object.width and y >= object.y and y < object.y + object.height
 end
 
 function playtest:mousepressed(x, y, b)
@@ -207,6 +218,13 @@ function playtest:mousepressed(x, y, b)
   if self.showLoopMessage then
     self.openLoopCodeButton:mousepressed(x, y, b)
     return
+  end
+
+  for _, object in ipairs(self.objects.list) do
+    if object.mouseOver then
+      object.mouseDown = true
+      self.mouseDownObjects[object] = true
+    end
   end
 end
 
@@ -220,6 +238,14 @@ function playtest:mousereleased(x, y, b)
     self.openLoopCodeButton:mousereleased(x, y, b)
     return
   end
+
+  for object, _ in pairs(self.mouseDownObjects) do
+    if self:isMouseOverObject(x, y, object) then
+      self:callObjectEvent(object, "mouseClick")
+    end
+    object.mouseDown = false
+  end
+  self.mouseDownObjects = {}
 end
 
 function playtest:mousemoved(x, y, dx, dy)
@@ -231,6 +257,16 @@ function playtest:mousemoved(x, y, dx, dy)
   if self.showLoopMessage then
     self.openLoopCodeButton:mousemoved(x, y, dx, dy)
     return
+  end
+
+  for _, object in ipairs(self.objects.list) do
+    object.prevMouseOver = object.mouseOver
+    object.mouseOver = self:isMouseOverObject(x, y, object)
+    if not object.prevMouseOver and object.mouseOver then
+      self:callObjectEvent(object, "mouseOver")
+    elseif object.prevMouseOver and not object.mouseOver then
+      self:callObjectEvent(object, "mouseOut")
+    end
   end
 end
 
@@ -251,7 +287,7 @@ function playtest:update(dt)
   end
   if not self.stuckInLoop then
     -- finally, if we're not stuck in a loop anymore, run the update event for all objects.
-    for _, object in ipairs(self.objects) do
+    for _, object in ipairs(self.objects.list) do
       -- TODO decide whether to include deltatime or not
       self:callObjectEvent(object, "update")
     end
@@ -269,7 +305,7 @@ function playtest:draw()
   lg.rectangle("fill", 0, 0, self.windowWidth, self.windowHeight)
   lg.push()
   lg.translate(-self.cameraX, -self.cameraY)
-  for _, obj in ipairs(self.objects) do
+  for _, obj in ipairs(self.objects.list) do
     lg.setColor(1, 1, 1)
     lg.draw(obj.image, obj.x, obj.y)
   end
