@@ -250,8 +250,8 @@ local function openObjectWindow(object, windowKind, createFunc)
     AddWindow(theWindow)
   end
   local screenX, screenY = worldToScreen(object.x, object.y)
-  theWindow.x = clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width)
-  theWindow.y = clamp(screenY, 0, lg.getHeight() - theWindow.height)
+  theWindow.x = math.floor(clamp(screenX + object.width + 20, 0, lg.getWidth() - theWindow.width))
+  theWindow.y = math.floor(clamp(screenY, 0, lg.getHeight() - theWindow.height))
   bringWindowToTop(theWindow)
   return theWindow
 end
@@ -531,8 +531,8 @@ function love.mousereleased(x, y, b)
     -- TODO input object name before adding
     if drawingObjectX ~= worldX and drawingObjectY ~= worldY then
       local new = {
-        x = math.min(worldX, drawingObjectX),
-        y = math.min(worldY, drawingObjectY),
+        x = math.floor(math.min(worldX, drawingObjectX)),
+        y = math.floor(math.min(worldY, drawingObjectY)),
         width = math.abs(worldX - drawingObjectX),
         height = math.abs(worldY - drawingObjectY),
         id = guid(),
