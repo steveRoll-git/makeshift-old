@@ -3,8 +3,8 @@ local lg = love.graphics
 
 local lerp = require "util.lerp"
 
-local titleBarHeight = 24
-local titleFont = lg.newFont(FontName, titleBarHeight - 6)
+local titleBarHeight = 28
+local titleFont = lg.newFont(FontName, titleBarHeight - 12)
 local cornerSize = 7
 
 local closeButton = {
@@ -12,9 +12,10 @@ local closeButton = {
   draw = function()
     lg.setColor(1, 1, 1)
     lg.setLineWidth(1)
-    local q = titleBarHeight / 4
-    lg.line(q, q, q * 3, q * 3)
-    lg.line(q * 3, q, q, q * 3)
+    local a = titleBarHeight / 3
+    local b = titleBarHeight - a
+    lg.line(a, a, b, b)
+    lg.line(b, a, a, b)
   end
 }
 local maximizeButton = {
@@ -22,9 +23,9 @@ local maximizeButton = {
   draw = function()
     lg.setColor(1, 1, 1)
     lg.setLineWidth(1)
-    local q = titleBarHeight / 4
-    local h = q * 1.5
-    lg.rectangle("line", q, titleBarHeight / 2 - h / 2, q * 2, h)
+    local w = math.floor(titleBarHeight / 2)
+    local h = math.floor(titleBarHeight / 3)
+    lg.rectangle("line", titleBarHeight / 2 - w / 2, titleBarHeight / 2 - h / 2, w, h)
   end
 }
 
@@ -141,7 +142,7 @@ function window:draw()
 
   lg.setColor(1, 1, 1)
   lg.setFont(titleFont)
-  lg.print(self.title, math.floor(cornerSize / 2))
+  lg.print(self.title, math.floor(cornerSize), math.floor(titleBarHeight / 2 - titleFont:getHeight() / 2))
 
 
   if self.menuStrip then
@@ -177,7 +178,6 @@ function window:draw()
   lg.line(0, titleBarHeight, self.width, titleBarHeight)
   lg.setColor(1, 1, 1, outlineColor)
   lg.rectangle("line", 0, 0, self.width, self.height, self:cornerSize())
-
 end
 
 return window
