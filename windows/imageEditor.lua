@@ -469,8 +469,8 @@ end
 
 function imageEditor:window(x, y)
   local new = window.new(self, "Image Editor",
-    self.imageData:getWidth() + self.toolbarWidth + self.palettePanelWidth + 50,
-    self.imageData:getHeight() + 80, x, y,
+    math.max(600, self.imageData:getWidth() + self.toolbarWidth + self.palettePanelWidth + 50),
+    math.max(400, self.imageData:getHeight() + 80), x, y,
     menuStrip.new {
       {
         title = "Image",
