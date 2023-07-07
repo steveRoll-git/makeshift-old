@@ -16,6 +16,7 @@ local playtest = require "windows.playtest"
 local window = require "ui.window"
 local popupMenu = require "ui.popupMenu"
 local orderedSet = require "util.orderedSet"
+local unorderedSet = require "util.unorderedSet"
 local clamp = require "util.clamp"
 local guid = require "util.guid"
 local parser = require "lang.parser"
@@ -50,15 +51,39 @@ local menuStripDown
 local drawingObject = false
 local drawingObjectX, drawingObjectY
 
-local objects = orderedSet.new()
-local objectsById = {}
+local project = {
+  scenes = unorderedSet.new()
+}
+
+local currentScene
+
+local objects
+local objectsById
+
+local function loadScene(scene)
+  currentScene = scene
+  objects = scene.objects
+  objectsById = {}
+  for _, obj in ipairs(scene.objects.list) do
+    objectsById[obj.id] = obj
+  end
+  love.graphics.setBackgroundColor(currentScene.backgroundColor)
+end
+
+local function createScene()
+  local new = {
+    id = guid(),
+    backgroundColor = { 0.7, 0.7, 0.7 },
+    objects = orderedSet.new()
+  }
+  project.scenes:add(new)
+  return new
+end
 
 local selectedObject
 local draggingObject = false
 local objectDragX, objectDragY
 local copiedObject
-
-local backgroundColor = { 0.7, 0.7, 0.7 }
 
 local gameWindowWidth, gameWindowHeight = 600, 450
 
@@ -260,7 +285,7 @@ local function parseObjectCode(code)
   return theParser:parseObjectCode()
 end
 
-love.graphics.setBackgroundColor(backgroundColor)
+loadScene(createScene())
 
 function love.mousemoved(x, y, dx, dy)
   local worldX, worldY = screenToWorld(x, y)
@@ -391,74 +416,102 @@ function love.mousepressed(x, y, b)
   if b == 2 then
     if selectedObject then
       OpenPopupMenu {
-        { text = "Paint", action = function()
-          if selectedObject.copiedImage then
-            selectedObject.copiedImage = false
-            selectedObject.imageData = selectedObject.imageData:clone()
-            selectedObject.image = lg.newImage(selectedObject.imageData)
+        {
+          text = "Paint",
+          action = function()
+            if selectedObject.copiedImage then
+              selectedObject.copiedImage = false
+              selectedObject.imageData = selectedObject.imageData:clone()
+              selectedObject.image = lg.newImage(selectedObject.imageData)
+            end
+            -- copiedObject points to to the original object's imageData
+            -- until it's edited, in which case a copy is made
+            if copiedObject and selectedObject.imageData == copiedObject.imageData then
+              selectedObject.imageData = selectedObject.imageData:clone()
+              selectedObject.image = lg.newImage(selectedObject.imageData)
+            end
+            openObjectImageEditor(selectedObject)
           end
-          -- copiedObject points to to the original object's imageData
-          -- until it's edited, in which case a copy is made
-          if copiedObject and selectedObject.imageData == copiedObject.imageData then
-            selectedObject.imageData = selectedObject.imageData:clone()
-            selectedObject.image = lg.newImage(selectedObject.imageData)
+        },
+        {
+          text = "Code",
+          action = function()
+            OpenObjectCodeEditor(selectedObject)
           end
-          openObjectImageEditor(selectedObject)
-        end },
-        { text = "Code", action = function()
-          OpenObjectCodeEditor(selectedObject)
-        end },
+        },
         { separator = true },
-        { text = "Bring to top", action = function()
-          objects:remove(selectedObject)
-          objects:add(selectedObject)
-        end },
-        { text = "Bring to bottom", action = function()
-          objects:remove(selectedObject)
-          objects:insertAt(1, selectedObject)
-        end },
+        {
+          text = "Bring to top",
+          action = function()
+            objects:remove(selectedObject)
+            objects:add(selectedObject)
+          end
+        },
+        {
+          text = "Bring to bottom",
+          action = function()
+            objects:remove(selectedObject)
+            objects:insertAt(1, selectedObject)
+          end
+        },
         { separator = true },
-        { text = "Copy", action = function()
-          copiedObject = {
-            width = selectedObject.width,
-            height = selectedObject.height,
-            imageData = selectedObject.imageData,
-            image = selectedObject.image,
-            code = selectedObject.code,
-          }
-        end },
+        {
+          text = "Copy",
+          action = function()
+            copiedObject = {
+              width = selectedObject.width,
+              height = selectedObject.height,
+              imageData = selectedObject.imageData,
+              image = selectedObject.image,
+              code = selectedObject.code,
+            }
+          end
+        },
         { separator = true },
-        { text = "Remove", action = function()
-          removeObject(selectedObject)
-        end },
+        {
+          text = "Remove",
+          action = function()
+            removeObject(selectedObject)
+          end
+        },
       }
     else
       OpenPopupMenu {
-        { text = "New object", action = function()
-          drawingObject = true
-          love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
-        end },
-        { text = "Paste", enabled = copiedObject ~= nil, action = function()
-          local new = {
-            x = worldX,
-            y = worldY,
-            width = copiedObject.width,
-            height = copiedObject.height,
-            imageData = copiedObject.imageData,
-            code = copiedObject.code,
-            copiedImage = true,
-            id = guid()
-          }
-          new.image = copiedObject.image
-          addObject(new)
-        end },
+        {
+          text = "New object",
+          action = function()
+            drawingObject = true
+            love.mouse.setCursor(love.mouse.getSystemCursor("crosshair"))
+          end
+        },
+        {
+          text = "Paste",
+          enabled = copiedObject ~= nil,
+          action = function()
+            local new = {
+              x = worldX,
+              y = worldY,
+              width = copiedObject.width,
+              height = copiedObject.height,
+              imageData = copiedObject.imageData,
+              code = copiedObject.code,
+              copiedImage = true,
+              id = guid()
+            }
+            new.image = copiedObject.image
+            addObject(new)
+          end
+        },
         { separator = true },
-        { text = "Background color", action = function()
-          AddWindow(colorPicker.new(backgroundColor, function(color)
-            backgroundColor = color
-            lg.setBackgroundColor(backgroundColor)
-          end):window(lg.getWidth() / 2 - 200, lg.getHeight() / 2 - 150, "Choose Background Color"))
-        end }
+        {
+          text = "Background color",
+          action = function()
+            AddWindow(colorPicker.new(currentScene.backgroundColor, function(color)
+              currentScene.backgroundColor = color
+              lg.setBackgroundColor(currentScene.backgroundColor)
+            end):window(lg.getWidth() / 2 - 200, lg.getHeight() / 2 - 150, "Choose Background Color"))
+          end
+        }
       }
     end
     return
@@ -519,7 +572,8 @@ function love.mousereleased(x, y, b)
             {
               width = love.graphics.getWidth(),
               height = love.graphics.getHeight(),
-              x = 0, y = 0,
+              x = 0,
+              y = 0,
               maximizeAnim = 1
             })
               :onupdate(function()
@@ -537,7 +591,8 @@ function love.mousereleased(x, y, b)
             {
               width = theWindow.originalWidth,
               height = theWindow.originalHeight,
-              x = theWindow.originalX, y = theWindow.originalY,
+              x = theWindow.originalX,
+              y = theWindow.originalY,
               maximizeAnim = 0,
             })
               :onupdate(function()
@@ -609,7 +664,7 @@ function love.keypressed(k)
     if not compilationError then
       currentPlaytest = playtest.new {
         objects = objects.list,
-        backgroundColor = backgroundColor,
+        backgroundColor = currentScene.backgroundColor,
         windowWidth = gameWindowWidth,
         windowHeight = gameWindowHeight,
       }
